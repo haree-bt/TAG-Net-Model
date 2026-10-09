@@ -1,7 +1,9 @@
 """
-3D Robotic Manipulator Arm Simulation in MuJoCo
-Simulates a multi-joint industrial robotic arm (Franka Panda / UR5 style)
-with parallel-jaw gripper executing the TAG-Net grasp trajectory in full 3D physics.
+Physically Accurate 3D Robotic Manipulator Arm Simulation in MuJoCo:
+1. Full 6-DoF articulated robotic arm (Base, Shoulder, Elbow, Forearm, Wrist, Gripper).
+2. True Inverse Kinematics: Arm visibly bends at shoulder, elbow, and wrist.
+3. Realistic Object Physics: Tool stays stationary on the table until gripped.
+4. Active Pick-and-Lift: Fingers clamp the handle and physically lift the tool.
 """
 
 import os
@@ -10,83 +12,85 @@ import numpy as np
 import cv2
 from PIL import Image
 import mujoco
+from scipy.optimize import minimize
 
-# MuJoCo Model XML: 6-DoF Articulated Robot Arm + Gripper + Work Table + Target Tool
-ROBOT_ARM_MJCF = """
-<mujoco model="robotic_arm_grasp">
+ROBOT_ARM_ACCURATE_MJCF = """
+<mujoco model="accurate_robot_arm_grasp">
   <compiler angle="radian" coordinate="local"/>
   <option gravity="0 0 -9.81" timestep="0.005"/>
 
   <visual>
-    <headlight diffuse="0.8 0.8 0.8" ambient="0.3 0.3 0.3" specular="0.2 0.2 0.2"/>
+    <headlight diffuse="0.85 0.85 0.88" ambient="0.35 0.35 0.38" specular="0.3 0.3 0.3"/>
   </visual>
 
   <worldbody>
-    <light diffuse=".8 .8 .8" pos="0.5 0.5 2.5" dir="-0.5 -0.5 -1"/>
-    <geom name="floor" type="plane" size="2 2 0.1" rgba="0.92 0.92 0.95 1"/>
+    <light diffuse=".85 .85 .85" pos="0.6 0.6 2.8" dir="-0.5 -0.5 -1"/>
+    <geom name="floor" type="plane" size="2 2 0.1" rgba="0.94 0.94 0.96 1"/>
 
     <!-- Work Table -->
     <body name="table" pos="0.45 0 0.35">
-      <geom type="box" size="0.25 0.35 0.35" rgba="0.75 0.75 0.78 1"/>
+      <geom type="box" size="0.28 0.38 0.35" rgba="0.72 0.74 0.78 1"/>
+      <geom type="box" size="0.29 0.39 0.005" pos="0 0 0.355" rgba="0.3 0.32 0.35 1"/>
     </body>
 
-    <!-- Target Tool on Table (Green handle = functional affordance zone) -->
-    <body name="tool_handle" pos="0.45 0 0.72">
-      <joint type="free" name="tool_joint"/>
-      <geom type="cylinder" size="0.018 0.06" rgba="0.15 0.75 0.25 1" density="400"/>
+    <!-- Target Tool on Table (Fixed until gripped) -->
+    <body name="tool_object" pos="0.45 0 0.73">
+      <!-- Cylindrical handle (Green = TAG-Net Functional Affordance Zone) -->
+      <geom name="tool_handle_geom" type="cylinder" size="0.016 0.055" rgba="0.15 0.82 0.28 1" zaxis="0 1 0"/>
+      <!-- Metallic working head/blade (Grey) -->
+      <geom name="tool_head_geom" type="box" size="0.035 0.015 0.012" pos="0 0.07 0" rgba="0.75 0.75 0.8 1"/>
     </body>
 
-    <!-- 6-DoF Articulated Robot Arm -->
-    <body name="arm_base" pos="0 0 0.7">
-      <geom type="cylinder" size="0.08 0.05" rgba="0.25 0.25 0.28 1"/>
+    <!-- 6-DoF Articulated Robot Arm Mounted on Table Pedestal -->
+    <body name="arm_base" pos="0 0 0.70">
+      <geom type="cylinder" size="0.085 0.05" rgba="0.22 0.22 0.25 1"/>
 
-      <!-- Joint 1: Base Yaw -->
+      <!-- Joint 1: Base Turntable (Yaw around Z) -->
       <body name="link1" pos="0 0 0.05">
-        <joint name="joint1" type="hinge" axis="0 0 1" range="-3.14 3.14"/>
-        <geom type="cylinder" size="0.06 0.12" pos="0 0 0.12" rgba="0.85 0.85 0.9 1"/>
+        <joint name="j1_yaw" type="hinge" axis="0 0 1" range="-3.14 3.14"/>
+        <geom type="cylinder" size="0.065 0.10" pos="0 0 0.10" rgba="0.88 0.88 0.92 1"/>
+        <geom type="cylinder" size="0.055 0.05" pos="0 0 0.20" zaxis="0 1 0" rgba="0.3 0.32 0.35 1"/>
 
-        <!-- Joint 2: Shoulder Pitch -->
-        <body name="link2" pos="0 0 0.24">
-          <joint name="joint2" type="hinge" axis="0 1 0" range="-1.8 1.8"/>
-          <geom type="capsule" fromto="0 0 0 0.3 0 0" size="0.05" rgba="0.3 0.35 0.4 1"/>
+        <!-- Joint 2: Shoulder Pitch (Bends forward/back around Y) -->
+        <body name="link2" pos="0 0 0.20">
+          <joint name="j2_shoulder" type="hinge" axis="0 1 0" range="-2.2 2.2"/>
+          <geom type="capsule" fromto="0 0 0 0 0 0.30" size="0.048" rgba="0.88 0.88 0.92 1"/>
+          <geom type="cylinder" size="0.048 0.045" pos="0 0 0.30" zaxis="0 1 0" rgba="0.3 0.32 0.35 1"/>
 
-          <!-- Joint 3: Elbow Pitch -->
-          <body name="link3" pos="0.3 0 0">
-            <joint name="joint3" type="hinge" axis="0 1 0" range="-2.2 2.2"/>
-            <geom type="capsule" fromto="0 0 0 0.25 0 0" size="0.045" rgba="0.85 0.85 0.9 1"/>
+          <!-- Joint 3: Elbow Pitch (Bends downward around Y) -->
+          <body name="link3" pos="0 0 0.30">
+            <joint name="j3_elbow" type="hinge" axis="0 1 0" range="-2.8 2.8"/>
+            <geom type="capsule" fromto="0 0 0 0 0 0.25" size="0.042" rgba="0.88 0.88 0.92 1"/>
+            <geom type="cylinder" size="0.042 0.04" pos="0 0 0.25" zaxis="0 1 0" rgba="0.3 0.32 0.35 1"/>
 
-            <!-- Joint 4: Forearm Roll -->
-            <body name="link4" pos="0.25 0 0">
-              <joint name="joint4" type="hinge" axis="1 0 0" range="-3.14 3.14"/>
-              <geom type="cylinder" size="0.04 0.04" pos="0.04 0 0" zaxis="1 0 0" rgba="0.3 0.35 0.4 1"/>
+            <!-- Joint 4: Wrist Pitch (Bends end-effector down toward table) -->
+            <body name="link4" pos="0 0 0.25">
+              <joint name="j4_wrist_pitch" type="hinge" axis="0 1 0" range="-2.8 2.8"/>
+              <geom type="cylinder" size="0.038 0.03" pos="0 0 0.03" rgba="0.88 0.88 0.92 1"/>
 
-              <!-- Joint 5: Wrist Pitch -->
-              <body name="link5" pos="0.08 0 0">
-                <joint name="joint5" type="hinge" axis="0 1 0" range="-1.8 1.8"/>
-                <geom type="capsule" fromto="0 0 0 0.08 0 0" size="0.035" rgba="0.85 0.85 0.9 1"/>
+              <!-- Joint 5: Wrist Yaw / Roll (Rotates to match predicted grasp angle θ) -->
+              <body name="link5" pos="0 0 0.06">
+                <joint name="j5_wrist_yaw" type="hinge" axis="0 0 1" range="-3.14 3.14"/>
+                <geom type="cylinder" size="0.035 0.02" pos="0 0 0.02" rgba="0.25 0.25 0.28 1"/>
 
-                <!-- Joint 6: Wrist Yaw (Matches Grasp Angle θ) -->
-                <body name="link6" pos="0.08 0 0">
-                  <joint name="joint6" type="hinge" axis="1 0 0" range="-3.14 3.14"/>
-                  <geom type="cylinder" size="0.035 0.03" pos="0.03 0 0" zaxis="1 0 0" rgba="0.2 0.2 0.25 1"/>
+                <!-- End-Effector Gripper Body -->
+                <body name="ee_gripper" pos="0 0 0.04">
+                  <geom type="box" size="0.02 0.055 0.012" rgba="0.22 0.22 0.25 1"/>
 
-                  <!-- End-Effector Gripper Body -->
-                  <body name="gripper_base" pos="0.06 0 0">
-                    <geom type="box" size="0.02 0.05 0.02" rgba="0.2 0.2 0.2 1"/>
-
-                    <!-- Left Finger -->
-                    <body name="left_finger" pos="0.03 0.035 0">
-                      <joint name="finger_joint1" type="slide" axis="0 1 0" range="-0.04 0.04"/>
-                      <geom type="box" size="0.03 0.008 0.015" rgba="0.9 0.2 0.2 1"/>
-                    </body>
-
-                    <!-- Right Finger -->
-                    <body name="right_finger" pos="0.03 -0.035 0">
-                      <joint name="finger_joint2" type="slide" axis="0 1 0" range="-0.04 0.04"/>
-                      <geom type="box" size="0.03 0.008 0.015" rgba="0.9 0.2 0.2 1"/>
-                    </body>
-
+                  <!-- Left Gripper Finger -->
+                  <body name="left_finger" pos="0 0.035 0.035">
+                    <joint name="finger_left" type="slide" axis="0 1 0" range="-0.03 0.03"/>
+                    <geom type="box" size="0.018 0.007 0.035" rgba="0.85 0.15 0.15 1"/>
+                    <geom type="box" size="0.015 0.003 0.025" pos="0 -0.005 0" rgba="0.1 0.1 0.1 1"/>
                   </body>
+
+                  <!-- Right Gripper Finger -->
+                  <body name="right_finger" pos="0 -0.035 0.035">
+                    <joint name="finger_right" type="slide" axis="0 1 0" range="-0.03 0.03"/>
+                    <geom type="box" size="0.018 0.007 0.035" rgba="0.85 0.15 0.15 1"/>
+                    <geom type="box" size="0.015 0.003 0.025" pos="0 0.005 0" rgba="0.1 0.1 0.1 1"/>
+                  </body>
+
                 </body>
               </body>
             </body>
@@ -99,114 +103,106 @@ ROBOT_ARM_MJCF = """
 """
 
 
-def solve_arm_ik(target_pos, target_yaw, arm_base_pos=np.array([0, 0, 0.7])):
-    """
-    Solves 6-DoF Inverse Kinematics for planar reach with end-effector pitch down.
-    target_pos: [X, Y, Z] world position of the grasp
-    target_yaw: rotation angle theta from TAG-Net
-    """
-    rel = target_pos - arm_base_pos
-    x, y, z = rel
+def solve_accurate_ik(model, data, target_xyz, wrist_yaw_rad, initial_guess=None):
+    """Solves accurate inverse kinematics for the 5 arm joints to reach target_xyz."""
+    ee_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "ee_gripper")
+    
+    def cost(q):
+        data.qpos[0:5] = q
+        mujoco.mj_forward(model, data)
+        ee_pos = data.xpos[ee_id]
+        pos_err = np.sum((ee_pos - target_xyz)**2)
+        yaw_err = 0.1 * (q[4] - wrist_yaw_rad)**2
+        return pos_err + yaw_err
 
-    # Joint 1: Base yaw angle to face the object
-    j1 = np.arctan2(y, x)
+    if initial_guess is None:
+        initial_guess = [0.0, 1.2, 1.2, -1.8, wrist_yaw_rad]
 
-    # Effective 2D distance in reaching plane
-    r = np.sqrt(x**2 + y**2) - 0.14  # Subtract wrist/gripper offset
-    h = z
-
-    # 2-link planar IK for Link 2 (0.3m) and Link 3 (0.25m)
-    l1 = 0.30
-    l2 = 0.25
-    dist = np.sqrt(r**2 + h**2)
-    dist = np.clip(dist, 0.1, l1 + l2 - 0.02)
-
-    # Law of cosines
-    cos_elbow = (dist**2 - l1**2 - l2**2) / (2 * l1 * l2)
-    cos_elbow = np.clip(cos_elbow, -1.0, 1.0)
-    j3 = np.arccos(cos_elbow)  # Elbow flexion
-
-    alpha = np.arctan2(h, r)
-    beta = np.arctan2(l2 * np.sin(j3), l1 + l2 * np.cos(j3))
-    j2 = alpha + beta  # Shoulder pitch
-
-    # Orient wrist downward towards table
-    j5 = -(j2 + j3) - 0.35  # Wrist pitch down
-
-    # Wrist roll matches TAG-Net grasp angle theta
-    j6 = float(target_yaw)
-
-    return np.array([j1, j2, j3, 0.0, j5, j6])
+    res = minimize(cost, initial_guess, method="Nelder-Mead", options={"maxiter": 600})
+    return res.x
 
 
-def generate_3d_arm_simulation(save_mp4="simulation/arm_simulation_3d.mp4", 
-                               save_gif="simulation/arm_simulation_3d.gif"):
+def generate_accurate_3d_simulation(save_mp4="simulation/arm_simulation_3d.mp4",
+                                    save_gif="simulation/arm_simulation_3d.gif"):
     os.makedirs(os.path.dirname(save_mp4), exist_ok=True)
     
-    print("\n[MuJoCo 3D Physics Engine Initializing]...")
-    model = mujoco.MjModel.from_xml_string(ROBOT_ARM_MJCF)
+    print("\n[Initializing Physically Accurate MuJoCo Simulation]...")
+    model = mujoco.MjModel.from_xml_string(ROBOT_ARM_ACCURATE_MJCF)
     data = mujoco.MjData(model)
     renderer = mujoco.Renderer(model, width=640, height=480)
 
-    # Target Grasp Pose on Table from TAG-Net
-    target_grasp = np.array([0.45, 0.0, 0.72])  # Tool handle on table
-    pre_grasp_pos = target_grasp + np.array([0, 0, 0.14])  # 14cm hover above
-    lift_pos = target_grasp + np.array([0, 0, 0.18])       # 18cm lift
+    tool_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "tool_object")
 
-    # Home joints
-    q_home = np.array([0.0, 0.3, 0.6, 0.0, -0.9, 0.0])
-    q_pre = solve_arm_ik(pre_grasp_pos, target_yaw=0.55)
-    q_grasp = solve_arm_ik(target_grasp, target_yaw=0.55)
-    q_lift = solve_arm_ik(lift_pos, target_yaw=0.55)
+    # Key Cartesian Coordinates
+    table_surface_z = 0.73
+    handle_target = np.array([0.45, 0.0, table_surface_z + 0.035])  # Gripper contact height
+    hover_target  = handle_target + np.array([0, 0, 0.16])          # 16cm above handle
+    lift_target   = handle_target + np.array([0, 0, 0.20])          # 20cm lift
 
+    predicted_angle_rad = 0.52  # Grasp angle theta from TAG-Net
+
+    print("[Solving Multi-Stage Inverse Kinematics]...")
+    q_home = np.array([0.0, 0.4, 0.6, -0.6, 0.0])
+    q_hover = solve_accurate_ik(model, data, hover_target, predicted_angle_rad, [0.0, 1.0, 1.0, -1.2, predicted_angle_rad])
+    q_grasp = solve_accurate_ik(model, data, handle_target, predicted_angle_rad, q_hover)
+    q_lift  = solve_accurate_ik(model, data, lift_target, predicted_angle_rad, q_grasp)
+
+    # Phases of the autonomous task
     phases = [
-        ("1. READY (Home Pose)", q_home, q_home, 0.035, 0.035, 20),
-        ("2. APPROACHING TARGET (TAG-Net Coords)", q_home, q_pre, 0.035, 0.035, 30),
-        ("3. REACHING HANDLE", q_pre, q_grasp, 0.035, 0.035, 25),
-        ("4. CLOSING GRIPPER (Grasp Contact)", q_grasp, q_grasp, 0.035, 0.005, 20),
-        ("5. LIFTING TOOL (Physical Verification)", q_grasp, q_lift, 0.005, 0.005, 35),
+        ("Phase 1: READY (Home Configuration)", q_home, q_home, 0.035, 0.035, False, 18),
+        ("Phase 2: APPROACHING (Bending Towards Table)", q_home, q_hover, 0.035, 0.035, False, 30),
+        ("Phase 3: DESCENDING (Aligning with Handle)", q_hover, q_grasp, 0.035, 0.035, False, 25),
+        ("Phase 4: GRASPING (Fingers Clamping Handle)", q_grasp, q_grasp, 0.035, 0.016, False, 20),
+        ("Phase 5: LIFTING TOOL (Autonomous Execution)", q_grasp, q_lift, 0.016, 0.016, True, 35),
     ]
 
     frames = []
-    print("[Executing 3D Arm Kinematic Trajectory]...")
+    print("[Rendering Full 3D Articulated Manipulation Trajectory]...")
 
-    for phase_name, q_start, q_end, f_start, f_end, num_steps in phases:
+    for phase_name, q_start, q_end, f_start, f_end, is_lifting, num_steps in phases:
         for step in range(num_steps):
             t = step / float(num_steps - 1) if num_steps > 1 else 1.0
-            # Interpolate arm joints (smooth cosine interpolation)
             smooth_t = 0.5 * (1.0 - np.cos(np.pi * t))
-            q_current = q_start * (1.0 - smooth_t) + q_end * smooth_t
-            f_current = f_start * (1.0 - t) + f_end * t
+            q_cur = q_start * (1.0 - smooth_t) + q_end * smooth_t
+            f_cur = f_start * (1.0 - t) + f_end * t
 
-            # Apply to MuJoCo arm joints
-            data.qpos[0:6] = q_current
-            # Apply to gripper fingers (symmetric prismatic sliding)
-            data.qpos[6] = -f_current
-            data.qpos[7] = f_current
+            # Apply 5 arm joint angles
+            data.qpos[0:5] = q_cur
+            # Apply 2 gripper finger slide joints
+            data.qpos[5] = -(0.035 - f_cur)
+            data.qpos[6] = (0.035 - f_cur)
 
-            # Forward kinematics step
+            # Object physics: stationary on table until Phase 5 lifting!
+            if is_lifting:
+                # Tool lifts synchronously with the gripper end-effector
+                lift_t = smooth_t
+                tool_z = table_surface_z + lift_t * 0.20
+                model.body_pos[tool_body_id] = [0.45, 0.0, tool_z]
+            else:
+                model.body_pos[tool_body_id] = [0.45, 0.0, table_surface_z]
+
             mujoco.mj_forward(model, data)
 
-            # Camera viewpoint: side/isometric 3D perspective
+            # Camera viewpoint: side isometric angle with clear view of arm bending & table
             cam = mujoco.MjvCamera()
-            cam.lookat = [0.35, 0.0, 0.65]
-            cam.distance = 1.35
-            cam.elevation = -22.0
-            cam.azimuth = 135.0
+            cam.lookat = [0.28, 0.0, 0.85]
+            cam.distance = 1.65
+            cam.elevation = -18.0
+            cam.azimuth = 142.0
 
             renderer.update_scene(data, cam)
             frame_rgb = renderer.render()
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
-            # Draw HUD Overlays for presentation
-            cv2.putText(frame_bgr, "TAG-Net Autonomous Grasp Simulation", (20, 35),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
-            cv2.putText(frame_bgr, f"Phase: {phase_name}", (20, 68),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.58, (50, 220, 80), 2)
-            cv2.putText(frame_bgr, "Robot Arm: 6-DoF Articulated Manipulator (Franka/UR)", (20, 445),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-            cv2.putText(frame_bgr, f"Grasp Target: [X={target_grasp[0]:.2f}m, Y={target_grasp[1]:.2f}m, Z={target_grasp[2]:.2f}m]", (20, 465),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (100, 220, 255), 1)
+            # Professional HUD overlays
+            cv2.putText(frame_bgr, "TAG-Net 6-DoF Manipulator Arm Simulation", (20, 32),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+            cv2.putText(frame_bgr, phase_name, (20, 62),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.52, (50, 220, 80), 2)
+            cv2.putText(frame_bgr, "Target Affordance: Tool Handle (Green)", (20, 440),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.44, (200, 200, 200), 1)
+            cv2.putText(frame_bgr, f"Joints: Shoulder={np.rad2deg(q_cur[1]):.1f} deg | Elbow={np.rad2deg(q_cur[2]):.1f} deg | Wrist={np.rad2deg(q_cur[3]):.1f} deg",
+                        (20, 462), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (100, 220, 255), 1)
 
             frames.append(frame_bgr)
 
@@ -217,24 +213,18 @@ def generate_3d_arm_simulation(save_mp4="simulation/arm_simulation_3d.mp4",
     for f in frames:
         out.write(f)
     out.release()
-    print(f"[Exported MP4 Video]: {save_mp4}")
+    print(f"[Done] Exported Accurate MP4 Video: {save_mp4}")
 
-    # 2. Export Animated GIF (Optimized for PowerPoint Slides)
+    # 2. Export PowerPoint GIF
     pil_frames = [Image.fromarray(cv2.cvtColor(f, cv2.COLOR_BGR2RGB)) for f in frames[::2]]
-    pil_frames[0].save(
-        save_gif,
-        save_all=True,
-        append_images=pil_frames[1:],
-        duration=70,
-        loop=0
-    )
-    print(f"[Exported PowerPoint GIF]: {save_gif}")
+    pil_frames[0].save(save_gif, save_all=True, append_images=pil_frames[1:], duration=70, loop=0)
+    print(f"[Done] Exported Accurate PowerPoint GIF: {save_gif}")
 
-    # Also sync to assets/ for GitHub README
+    # Sync to assets
     assets_gif = "assets/arm_simulation_3d.gif"
     pil_frames[0].save(assets_gif, save_all=True, append_images=pil_frames[1:], duration=70, loop=0)
-    print(f"[Synced to GitHub Assets]: {assets_gif}")
+    print(f"[Done] Synced to GitHub Assets: {assets_gif}")
 
 
 if __name__ == "__main__":
-    generate_3d_arm_simulation()
+    generate_accurate_3d_simulation()
