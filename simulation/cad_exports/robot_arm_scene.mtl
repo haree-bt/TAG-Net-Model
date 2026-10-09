@@ -1,0 +1,25 @@
+# Materials for Fusion 360
+newmtl Metallic_Arm
+Kd 0.85 0.85 0.90
+Ks 0.5 0.5 0.5
+Ns 50.0
+
+newmtl Dark_Joints
+Kd 0.25 0.25 0.28
+Ks 0.2 0.2 0.2
+Ns 20.0
+
+newmtl Red_Gripper
+Kd 0.85 0.15 0.15
+Ks 0.4 0.4 0.4
+Ns 30.0
+
+newmtl Tool_Handle
+Kd 0.15 0.80 0.25
+Ks 0.3 0.3 0.3
+Ns 25.0
+
+newmtl Table_Surface
+Kd 0.70 0.72 0.75
+Ks 0.1 0.1 0.1
+Ns 10.0
