@@ -1,0 +1,30 @@
+# Fusion 360 Material Shaders
+newmtl Metallic_Arm
+Kd 0.90 0.90 0.94
+Ks 0.70 0.70 0.70
+Ns 60.0
+
+newmtl Dark_Joints
+Kd 0.22 0.22 0.26
+Ks 0.35 0.35 0.35
+Ns 35.0
+
+newmtl Anodized_Red
+Kd 0.85 0.12 0.15
+Ks 0.55 0.55 0.55
+Ns 45.0
+
+newmtl Handle_Green
+Kd 0.15 0.82 0.28
+Ks 0.40 0.40 0.40
+Ns 30.0
+
+newmtl Ceramic_White
+Kd 0.95 0.95 0.95
+Ks 0.60 0.60 0.60
+Ns 70.0
+
+newmtl Matte_Table
+Kd 0.65 0.68 0.72
+Ks 0.15 0.15 0.15
+Ns 10.0
