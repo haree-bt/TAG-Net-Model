@@ -6,3 +6,5 @@ checkpoints/*.pth
 .vscode/
 .idea/
 .env
+*.whl
+test_cuda_wsl.py

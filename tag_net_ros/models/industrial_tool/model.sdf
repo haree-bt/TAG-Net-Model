@@ -1,0 +1,84 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="industrial_tool">
+    <static>false</static>
+    <link name="tool_base">
+      <inertial>
+        <pose>0.04 0 0 0 0 0</pose>
+        <mass>0.35</mass>
+        <inertia>
+          <ixx>0.0008</ixx>
+          <iyy>0.0012</iyy>
+          <izz>0.0012</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <!-- Affordance Region 0: Safe Cylindrical Handle (Grip Zone) -->
+      <visual name="handle_visual">
+        <pose>-0.04 0 0 0 1.5707963 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.018</radius>
+            <length>0.14</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.1 0.3 0.8 1.0</ambient>
+          <diffuse>0.15 0.45 0.9 1.0</diffuse>
+          <specular>0.5 0.5 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="handle_collision">
+        <pose>-0.04 0 0 0 1.5707963 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.018</radius>
+            <length>0.14</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.2</mu>
+              <mu2>1.2</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <!-- Affordance Region 1: Functional Head / Blade (Work Zone) -->
+      <visual name="head_visual">
+        <pose>0.07 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.08 0.045 0.02</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.85 0.25 0.1 1.0</ambient>
+          <diffuse>0.95 0.3 0.1 1.0</diffuse>
+          <specular>0.7 0.7 0.7 1.0</specular>
+        </material>
+      </visual>
+      <collision name="head_collision">
+        <pose>0.07 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.08 0.045 0.02</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.8</mu>
+              <mu2>0.8</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+    </link>
+  </model>
+</sdf>
