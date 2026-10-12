@@ -105,6 +105,18 @@ Evaluates checkpoints on the test set and prints the quantitative comparison tab
 python evaluate.py
 ```
 
+### 5. Launch REST API & Interactive Web Studio
+Start the real-time FastAPI server with interactive Swagger docs and dynamic feature alteration studio:
+```bash
+# Windows 1-click launcher
+run_api.bat
+
+# Or terminal command:
+python api.py
+```
+* **Interactive Web Studio:** Open [http://localhost:8000/demo](http://localhost:8000/demo) or [http://localhost:8000](http://localhost:8000) to adjust task context, tool categories, and affordance weight $\alpha \in [0.0, 1.0]$ with live visual feedback.
+* **Interactive Swagger UI:** Open [http://localhost:8000/docs](http://localhost:8000/docs) to inspect endpoints (`/predict_grasp`, `/features`, `/health`) and query the model via JSON.
+
 ---
 
 ## 📄 Citation / Paper Draft
