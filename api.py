@@ -408,24 +408,24 @@ def interactive_demo_page():
         <input type="range" id="quality_threshold" min="0.01" max="0.50" step="0.01" value="0.05" oninput="document.getElementById('thresh_display').innerText = parseFloat(this.value).toFixed(2)">
       </div>
 
-      <button class="btn" onclick="executeInference()">▶ Run Grasp Inference</button>
+      <button type="button" class="btn" onclick="executeInference(event)">▶ Run Grasp Inference</button>
 
       <div style="margin-top: 20px;">
         <label>One-Click Demonstration Presets:</label>
         <div class="presets">
-          <button class="preset-btn" onclick="applyPreset('mug', 'baseline', 0.0, 'unconstrained', 1)">
+          <button type="button" class="preset-btn" onclick="applyPreset('mug', 'baseline', 0.0, 'unconstrained', 1, event)">
             <strong>❌ Preset A: Classical Baseline Failure</strong>
             Mug Drinking Rim Grasp (&alpha; = 0.0 &rarr; DANGEROUS [FAIL])
           </button>
-          <button class="preset-btn" onclick="applyPreset('mug', 'tag_net', 1.0, 'safe_handover', 1)">
+          <button type="button" class="preset-btn" onclick="applyPreset('mug', 'tag_net', 1.0, 'safe_handover', 1, event)">
             <strong>✅ Preset B: TAG-Net Semantic Correction</strong>
             Mug Handle Grasp (&alpha; = 1.0 &rarr; SAFE [PASS])
           </button>
-          <button class="preset-btn" onclick="applyPreset('knife', 'tag_net', 1.0, 'safe_handover', 0)">
+          <button type="button" class="preset-btn" onclick="applyPreset('knife', 'tag_net', 1.0, 'safe_handover', 0, event)">
             <strong>🔪 Preset C: Knife Handle Handover</strong>
             Sharp Blade Avoidance (&alpha; = 1.0 &rarr; SAFE [PASS])
           </button>
-          <button class="preset-btn" onclick="applyPreset('screwdriver', 'tag_net', 1.0, 'safe_handover', 0)">
+          <button type="button" class="preset-btn" onclick="applyPreset('screwdriver', 'tag_net', 1.0, 'safe_handover', 0, event)">
             <strong>🪛 Preset D: Screwdriver Ergonomic Grip</strong>
             Metal Shaft Clearance (&alpha; = 1.0 &rarr; SAFE [PASS])
           </button>
@@ -438,7 +438,7 @@ def interactive_demo_page():
       <h2>2. Live Model Output & Grasp Visualization</h2>
 
       <div class="vis-card">
-        <img id="vis_img" src="" alt="Run inference to generate grasp visualization">
+        <img id="vis_img" src="" alt="Live Model Output will appear here">
       </div>
 
       <div class="metrics">
@@ -461,12 +461,23 @@ def interactive_demo_page():
       </div>
 
       <h3 style="font-size: 0.9rem; color: var(--muted); margin-bottom: 8px;">Raw HTTP API JSON Response:</h3>
-      <div class="json-box" id="json_output">{ "message": "Click 'Run Grasp Inference' to query API..." }</div>
+      <div class="json-box" id="json_output">{ "message": "Inference results will appear here..." }</div>
     </div>
   </div>
 
   <script>
-    async function executeInference() {
+    let debounceTimer = null;
+    function triggerUpdate() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(executeInference, 60);
+    }
+
+    async function executeInference(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
       const payload = {
         tool_type: document.getElementById('tool_type').value,
         sample_idx: parseInt(document.getElementById('sample_idx').value) || 0,
@@ -477,7 +488,7 @@ def interactive_demo_page():
         max_gripper_width: 50.0
       };
 
-      document.getElementById('verdict_val').innerText = 'Computing...';
+      document.getElementById('verdict_val').innerText = '...';
       document.getElementById('json_output').innerText = 'Querying POST /predict_grasp...';
 
       try {
@@ -516,9 +527,14 @@ def interactive_demo_page():
         document.getElementById('verdict_val').innerText = 'ERROR';
         document.getElementById('json_output').innerText = 'Request Error: ' + err.message;
       }
+      return false;
     }
 
-    function applyPreset(tool, model, alpha, task, sampleIdx = 0) {
+    function applyPreset(tool, model, alpha, task, sampleIdx, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       document.getElementById('tool_type').value = tool;
       document.getElementById('model_type').value = model;
       document.getElementById('affordance_weight').value = alpha;
@@ -526,10 +542,25 @@ def interactive_demo_page():
       document.getElementById('task_mode').value = task;
       document.getElementById('sample_idx').value = sampleIdx;
       executeInference();
+      return false;
     }
 
-    // Auto-run on load
+    // Auto-attach live event listeners
     window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('tool_type').addEventListener('change', triggerUpdate);
+      document.getElementById('model_type').addEventListener('change', triggerUpdate);
+      document.getElementById('task_mode').addEventListener('change', triggerUpdate);
+      document.getElementById('sample_idx').addEventListener('input', triggerUpdate);
+      document.getElementById('affordance_weight').addEventListener('input', () => {
+        document.getElementById('alpha_display').innerText = parseFloat(document.getElementById('affordance_weight').value).toFixed(2);
+        triggerUpdate();
+      });
+      document.getElementById('quality_threshold').addEventListener('input', () => {
+        document.getElementById('thresh_display').innerText = parseFloat(document.getElementById('quality_threshold').value).toFixed(2);
+        triggerUpdate();
+      });
+
+      // Initial execute
       executeInference();
     });
   </script>
