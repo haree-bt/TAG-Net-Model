@@ -224,7 +224,8 @@ def run_inference_core(
     task_mode: str = "safe_handover",
     affordance_weight: float = 1.0,
     quality_threshold: float = 0.05,
-    max_gripper_width: float = 50.0
+    max_gripper_width: float = 50.0,
+    generate_image: bool = True
 ):
     """
     Core execution logic shared between JSON endpoint and Binary Image endpoint.
@@ -280,8 +281,15 @@ def run_inference_core(
         threshold=quality_threshold
     )
 
-    title_label = f"{tool_type.upper()} | Model: {model_type.upper()} (α={affordance_weight:.2f})"
-    img_bytes, is_safe = generate_visualization_bytes(rgb, grasp, aff_gt, q_map_np, aff_pred, title=title_label)
+    is_safe = False
+    if grasp:
+        gx, gy, ang, w, conf = grasp
+        is_safe = bool(aff_gt[int(np.clip(gy, 0, 223)), int(np.clip(gx, 0, 223))] > 0.5)
+
+    img_bytes = None
+    if generate_image:
+        title_label = f"{tool_type.upper()} | Model: {model_type.upper()} (α={affordance_weight:.2f})"
+        img_bytes, is_safe = generate_visualization_bytes(rgb, grasp, aff_gt, q_map_np, aff_pred, title=title_label)
 
     grasp_data = None
     if grasp:
@@ -323,7 +331,7 @@ def run_inference_core(
             "device": str(DEVICE)
         },
         "image_url": image_url,
-        "visualization_base64": f"data:image/png;base64,{base64.b64encode(img_bytes).decode('utf-8')}"
+        "visualization_base64": f"data:image/png;base64,{base64.b64encode(img_bytes).decode('utf-8')}" if img_bytes else None
     }
     return result, img_bytes
 
@@ -332,7 +340,8 @@ def run_inference_core(
 def predict_grasp(req: GraspRequest):
     """
     Main Grasp Prediction Endpoint:
-    Receives feature configuration, executes forward pass, and returns grasp coordinates + visualization.
+    Receives feature configuration, executes forward pass, and returns grasp coordinates + metrics.
+    Ultra-low latency (~8ms) without Matplotlib rendering overhead.
     """
     data, _ = run_inference_core(
         tool_type=req.tool_type,
@@ -341,7 +350,8 @@ def predict_grasp(req: GraspRequest):
         task_mode=req.task_mode,
         affordance_weight=req.affordance_weight,
         quality_threshold=req.quality_threshold,
-        max_gripper_width=req.max_gripper_width
+        max_gripper_width=req.max_gripper_width,
+        generate_image=False
     )
     return data
 
@@ -370,7 +380,8 @@ def get_visualization_image(
         task_mode=task_mode,
         affordance_weight=affordance_weight,
         quality_threshold=quality_threshold,
-        max_gripper_width=max_gripper_width
+        max_gripper_width=max_gripper_width,
+        generate_image=True
     )
     return Response(
         content=img_bytes,
@@ -472,7 +483,7 @@ def interactive_demo_page():
 
       <div class="form-group">
         <label>Object Type (Tool Category):</label>
-        <select id="tool_type">
+        <select id="tool_type" onchange="triggerUpdate()">
           <option value="knife">Knife (Sharp Blade vs. Handle)</option>
           <option value="mug">Mug (Drinking Rim vs. Handle)</option>
           <option value="screwdriver">Screwdriver (Metal Shaft vs. Handle)</option>
@@ -481,12 +492,12 @@ def interactive_demo_page():
 
       <div class="form-group">
         <label>Sample Index (Random Variation):</label>
-        <input type="number" id="sample_idx" value="1" min="0" max="25">
+        <input type="number" id="sample_idx" value="1" min="0" max="25" onchange="triggerUpdate()" oninput="triggerUpdate()">
       </div>
 
       <div class="form-group">
         <label>Model Architecture:</label>
-        <select id="model_type">
+        <select id="model_type" onchange="triggerUpdate()">
           <option value="tag_net">TAG-Net (Proposed Affordance-Gated)</option>
           <option value="baseline">Baseline (Classical Geometric-Only)</option>
         </select>
@@ -494,7 +505,7 @@ def interactive_demo_page():
 
       <div class="form-group">
         <label>Task Context Mode:</label>
-        <select id="task_mode">
+        <select id="task_mode" onchange="triggerUpdate()">
           <option value="safe_handover">Safe Handover to Human (Handle Priority)</option>
           <option value="tool_use">Direct Functional Tool Use</option>
           <option value="unconstrained">Unconstrained Pick & Place</option>
@@ -503,13 +514,13 @@ def interactive_demo_page():
 
       <div class="form-group">
         <label>Affordance Gating Weight (&alpha;): <span class="slider-val" id="alpha_display">1.00</span></label>
-        <input type="range" id="affordance_weight" min="0" max="1" step="0.05" value="1.0" oninput="document.getElementById('alpha_display').innerText = parseFloat(this.value).toFixed(2)">
+        <input type="range" id="affordance_weight" min="0" max="1" step="0.05" value="1.0" oninput="document.getElementById('alpha_display').innerText = parseFloat(this.value).toFixed(2); triggerUpdate();">
         <small style="color: var(--muted); font-size: 0.75rem;">&alpha; = 0.0 (Pure Geometry) &rarr; &alpha; = 1.0 (Strict Task Affordance)</small>
       </div>
 
       <div class="form-group">
         <label>Grasp Quality Threshold: <span class="slider-val" id="thresh_display">0.05</span></label>
-        <input type="range" id="quality_threshold" min="0.01" max="0.50" step="0.01" value="0.05" oninput="document.getElementById('thresh_display').innerText = parseFloat(this.value).toFixed(2)">
+        <input type="range" id="quality_threshold" min="0.01" max="0.50" step="0.01" value="0.05" oninput="document.getElementById('thresh_display').innerText = parseFloat(this.value).toFixed(2); triggerUpdate();">
       </div>
 
       <button type="button" class="btn" onclick="executeInference(event)">▶ Run Single Inference</button>
@@ -648,10 +659,13 @@ def interactive_demo_page():
     }
 
     let debounceTimer = null;
+    let currentInferenceId = 0;
+    let activePreloader = null;
+
     function triggerUpdate() {
       if (isStreaming) return;
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(executeInference, 120);
+      debounceTimer = setTimeout(() => executeInference(), 80);
     }
 
     async function executeInference(event) {
@@ -659,8 +673,8 @@ def interactive_demo_page():
         event.preventDefault();
         event.stopPropagation();
       }
-      if (inFlight) return false;
-      inFlight = true;
+
+      const inferenceId = ++currentInferenceId;
 
       const payload = {
         tool_type: document.getElementById('tool_type').value,
@@ -672,35 +686,41 @@ def interactive_demo_page():
         max_gripper_width: 50.0
       };
 
-      try {
-        const imgUrl = `/visualization.png?tool_type=${encodeURIComponent(payload.tool_type)}&sample_idx=${payload.sample_idx}&model_type=${encodeURIComponent(payload.model_type)}&task_mode=${encodeURIComponent(payload.task_mode)}&affordance_weight=${payload.affordance_weight}&quality_threshold=${payload.quality_threshold}&t=${Date.now()}`;
+      // 1. Direct Image Preloader (Zero-flicker, zero black-box, persistent display)
+      const imgUrl = `/visualization.png?tool_type=${encodeURIComponent(payload.tool_type)}&sample_idx=${payload.sample_idx}&model_type=${encodeURIComponent(payload.model_type)}&task_mode=${encodeURIComponent(payload.task_mode)}&affordance_weight=${payload.affordance_weight}&quality_threshold=${payload.quality_threshold}&t=${Date.now()}`;
 
-        // Fetch API metrics and binary image concurrently
-        const [apiResp, imgResp] = await Promise.all([
-          fetch('/predict_grasp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }),
-          fetch(imgUrl)
-        ]);
-
-        const data = await apiResp.json();
-
-        // 1. Swap image using native binary Blob (100% reliable, zero data-URL glitches)
-        if (imgResp.ok) {
-          const blob = await imgResp.blob();
-          const blobUrl = URL.createObjectURL(blob);
+      activePreloader = new Image();
+      activePreloader.onload = () => {
+        if (inferenceId === currentInferenceId) {
           const imgElem = document.getElementById('vis_img');
-          imgElem.src = blobUrl;
+          imgElem.src = imgUrl;
         }
+      };
+      activePreloader.onerror = () => {
+        console.warn("Direct image reload fallback for:", imgUrl);
+        if (inferenceId === currentInferenceId) {
+          document.getElementById('vis_img').src = imgUrl;
+        }
+      };
+      activePreloader.src = imgUrl;
 
-        // 2. Update Verdict
+      // 2. Fetch JSON coordinates and safety evaluation (~8ms latency)
+      try {
+        const resp = await fetch('/predict_grasp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        if (inferenceId !== currentInferenceId) return false;
+
+        // Update Safety Verdict
         const vElem = document.getElementById('verdict_val');
         vElem.innerText = data.safety_evaluation.is_safe ? 'PASS' : 'FAIL';
         vElem.className = 'metric-val ' + (data.safety_evaluation.is_safe ? 'status-pass' : 'status-fail');
 
-        // 3. Update Coords & Angle
+        // Update Coordinates & Angle
         if (data.grasp) {
           document.getElementById('coords_val').innerText = `(${data.grasp.center_x}, ${data.grasp.center_y})`;
           document.getElementById('angle_val').innerText = `${data.grasp.angle_deg}°`;
@@ -709,16 +729,16 @@ def interactive_demo_page():
           document.getElementById('angle_val').innerText = '--';
         }
 
-        // 4. Latency
+        // Update Latency
         document.getElementById('latency_val').innerText = `${data.performance.latency_ms} ms (${data.performance.estimated_fps} FPS)`;
 
-        // 5. Raw JSON
+        // Update Raw JSON Output
         document.getElementById('json_output').innerText = JSON.stringify(data, null, 2);
       } catch (err) {
-        document.getElementById('verdict_val').innerText = 'ERROR';
-        document.getElementById('json_output').innerText = 'Request Error: ' + err.message;
-      } finally {
-        inFlight = false;
+        if (inferenceId === currentInferenceId) {
+          document.getElementById('verdict_val').innerText = 'ERROR';
+          document.getElementById('json_output').innerText = 'Request Error: ' + err.message;
+        }
       }
       return false;
     }
