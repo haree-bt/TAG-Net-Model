@@ -441,13 +441,13 @@ def interactive_demo_page():
     .tab-btn { background: #0F172A; border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
     .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
     
-    .vis-card { text-align: center; margin-bottom: 20px; background: #050811; border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 280px; display: flex; align-items: center; justify-content: center; position: relative; }
-    .vis-card img { max-width: 100%; border-radius: 6px; display: block; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .vis-card { width: 100%; text-align: center; margin-bottom: 20px; background: #0F172A; border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 280px; position: relative; }
+    .vis-card img { width: 100%; max-width: 820px; height: auto; border-radius: 6px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
     
     .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
     .metric-box { background: #0F172A; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
-    .metric-title { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
-    .metric-val { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    .metric-title { font-size: 0.75rem; color: #94A3B8; text-transform: uppercase; margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }
+    .metric-val { font-size: 1.25rem; font-weight: 700; color: #F8FAFC; }
     .status-pass { color: var(--green) !important; }
     .status-fail { color: var(--red) !important; }
     .json-box { background: #050811; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.8rem; color: #38BDF8; max-height: 220px; overflow-y: auto; white-space: pre-wrap; }
@@ -552,7 +552,7 @@ def interactive_demo_page():
           <img id="vis_img" 
                src="/visualization.png?tool_type=knife&sample_idx=1&model_type=tag_net&task_mode=safe_handover&affordance_weight=1.0&quality_threshold=0.05" 
                alt="AI Grasp Heatmap & Detection"
-               style="max-width: 100%; height: auto; min-height: 250px; display: block; margin: 0 auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.6);"
+               style="width: 100%; max-width: 820px; height: auto; display: block; margin: 0 auto; border-radius: 6px;"
           >
         </div>
 
@@ -680,10 +680,15 @@ def interactive_demo_page():
         });
         const data = await resp.json();
 
-        // 1. Update image via binary endpoint with cache-buster timestamp
-        const imgElem = document.getElementById('vis_img');
-        const imgUrl = `/visualization.png?tool_type=${encodeURIComponent(payload.tool_type)}&sample_idx=${payload.sample_idx}&model_type=${encodeURIComponent(payload.model_type)}&task_mode=${encodeURIComponent(payload.task_mode)}&affordance_weight=${payload.affordance_weight}&quality_threshold=${payload.quality_threshold}&t=${Date.now()}`;
-        imgElem.src = imgUrl;
+        // 1. Double-buffered seamless image update (NEVER unloads or flashes black)
+        if (data.visualization_base64) {
+          const nextImg = new Image();
+          nextImg.onload = () => {
+            const imgElem = document.getElementById('vis_img');
+            imgElem.src = nextImg.src;
+          };
+          nextImg.src = data.visualization_base64;
+        }
 
         // 2. Update Verdict
         const vElem = document.getElementById('verdict_val');
