@@ -673,21 +673,26 @@ def interactive_demo_page():
       };
 
       try {
-        const resp = await fetch('/predict_grasp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await resp.json();
+        const imgUrl = `/visualization.png?tool_type=${encodeURIComponent(payload.tool_type)}&sample_idx=${payload.sample_idx}&model_type=${encodeURIComponent(payload.model_type)}&task_mode=${encodeURIComponent(payload.task_mode)}&affordance_weight=${payload.affordance_weight}&quality_threshold=${payload.quality_threshold}&t=${Date.now()}`;
 
-        // 1. Double-buffered seamless image update (NEVER unloads or flashes black)
-        if (data.visualization_base64) {
-          const nextImg = new Image();
-          nextImg.onload = () => {
-            const imgElem = document.getElementById('vis_img');
-            imgElem.src = nextImg.src;
-          };
-          nextImg.src = data.visualization_base64;
+        // Fetch API metrics and binary image concurrently
+        const [apiResp, imgResp] = await Promise.all([
+          fetch('/predict_grasp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }),
+          fetch(imgUrl)
+        ]);
+
+        const data = await apiResp.json();
+
+        // 1. Swap image using native binary Blob (100% reliable, zero data-URL glitches)
+        if (imgResp.ok) {
+          const blob = await imgResp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const imgElem = document.getElementById('vis_img');
+          imgElem.src = blobUrl;
         }
 
         // 2. Update Verdict
@@ -747,9 +752,6 @@ def interactive_demo_page():
         document.getElementById('thresh_display').innerText = parseFloat(document.getElementById('quality_threshold').value).toFixed(2);
         triggerUpdate();
       });
-
-      // Initial execute on load
-      executeInference();
     });
   </script>
 </body>
