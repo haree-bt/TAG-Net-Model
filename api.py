@@ -413,167 +413,597 @@ def interactive_demo_page():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TAG-Net: Interactive Grasp Synthesis & Feature Studio</title>
+  <title>TAG-Net // Autonomous Robotic Grasp Synthesis Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0B1120;
-      --card: #1E293B;
-      --border: #334155;
-      --accent: #06B6D4;
+      --bg: #050813;
+      --card-bg: rgba(13, 20, 38, 0.78);
+      --card-border: rgba(56, 189, 248, 0.22);
+      --cyan: #00F2FE;
+      --cyan-glow: rgba(0, 242, 254, 0.35);
+      --blue: #3B82F6;
       --green: #10B981;
-      --red: #EF4444;
-      --text: #F8FAFC;
-      --muted: #94A3B8;
+      --green-glow: rgba(16, 185, 129, 0.35);
+      --red: #FF3366;
+      --red-glow: rgba(255, 51, 102, 0.35);
+      --amber: #F59E0B;
+      --text-main: #F8FAFC;
+      --text-dim: #94A3B8;
+      --text-glow: #E0F2FE;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; }
-    .header h1 { font-size: 1.5rem; color: var(--text); }
-    .badge { background: #0284C7; color: white; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
-    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-    .panel h2 { font-size: 1.1rem; margin-bottom: 15px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
-    select, input[type="range"], input[type="number"] { width: 100%; padding: 8px 12px; background: #0F172A; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem; }
-    .slider-val { font-weight: 700; color: var(--accent); margin-left: 6px; }
-    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: linear-gradient(135deg, #06B6D4, #3B82F6); color: white; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: 0.2s; margin-top: 10px; }
-    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-stream { background: linear-gradient(135deg, #10B981, #059669); margin-top: 8px; }
-    .btn-stream.active { background: linear-gradient(135deg, #EF4444, #B91C1C) !important; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.75; } 100% { opacity: 1; } }
-    .presets { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 15px; }
-    .preset-btn { background: #0F172A; border: 1px solid var(--border); color: var(--muted); padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; text-align: left; transition: 0.2s; }
-    .preset-btn:hover { border-color: var(--accent); color: var(--text); }
-    .preset-btn strong { color: var(--text); display: block; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
-    /* View Tabs */
-    .tab-bar { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-    .tab-btn { background: #0F172A; border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
-    .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(ellipse 90% 60% at 50% -10%, rgba(6, 182, 212, 0.18), transparent 75%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+      color: var(--text-main);
+      padding: 24px;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Top Command Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 18px 26px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .header-branding { display: flex; align-items: center; gap: 14px; }
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00F2FE, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 20px var(--cyan-glow);
+    }
+    .header h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #FFFFFF, #BAE6FD);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .hud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 7px 14px;
+      border-radius: 9999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #38BDF8;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    .beacon {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+      animation: pulse-beacon 1.8s infinite;
+    }
+    @keyframes pulse-beacon {
+      0% { transform: scale(0.95); box-shadow: 0 0 4px var(--green); }
+      50% { transform: scale(1.35); box-shadow: 0 0 14px var(--green); }
+      100% { transform: scale(0.95); box-shadow: 0 0 4px var(--green); }
+    }
+    .docs-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15));
+      border: 1px solid rgba(6, 182, 212, 0.45);
+      color: #38BDF8;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      transition: all 0.25s;
+    }
+    .docs-btn:hover {
+      background: linear-gradient(135deg, #00F2FE, #3B82F6);
+      color: #050813;
+      box-shadow: 0 0 20px var(--cyan-glow);
+      transform: translateY(-1px);
+    }
+
+    /* Main Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+    }
+
+    /* Glass Panels */
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      position: relative;
+    }
+    .panel h2 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel h2::before {
+      content: '//';
+      color: var(--blue);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Form Controls */
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94A3B8;
+      margin-bottom: 8px;
+    }
+    .tag-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--cyan);
+      font-weight: 700;
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid rgba(6, 182, 212, 0.28);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(10, 15, 30, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 9px;
+      color: #F8FAFC;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      outline: none;
+    }
+    select:focus, input[type="number"]:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.25);
+    }
     
-    .vis-card { width: 100%; text-align: center; margin-bottom: 20px; background: #0F172A; border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 280px; position: relative; }
-    .vis-card img { width: 100%; max-width: 820px; height: auto; border-radius: 6px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
-    
-    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-    .metric-box { background: #0F172A; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
-    .metric-title { font-size: 0.75rem; color: #94A3B8; text-transform: uppercase; margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }
-    .metric-val { font-size: 1.25rem; font-weight: 700; color: #F8FAFC; }
-    .status-pass { color: var(--green) !important; }
-    .status-fail { color: var(--red) !important; }
-    .json-box { background: #050811; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.8rem; color: #38BDF8; max-height: 220px; overflow-y: auto; white-space: pre-wrap; }
-    .docs-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+    /* Neon Sliders */
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, #1E293B, #0284C7);
+      border-radius: 6px;
+      outline: none;
+      -webkit-appearance: none;
+      margin: 10px 0 6px 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #00F2FE;
+      box-shadow: 0 0 12px #00F2FE, 0 0 20px rgba(0, 242, 254, 0.6);
+      cursor: pointer;
+      border: 2px solid #FFFFFF;
+      transition: transform 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
+    .slider-hint { font-size: 0.72rem; color: #64748B; margin-top: 4px; display: block; }
+
+    /* Action Buttons */
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00C6FF, #0072FF);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.25s;
+      margin-top: 8px;
+      box-shadow: 0 4px 18px rgba(0, 114, 255, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 198, 255, 0.55);
+    }
+    .btn-stream {
+      background: linear-gradient(135deg, #10B981, #059669);
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
+      margin-top: 10px;
+    }
+    .btn-stream:hover { box-shadow: 0 6px 25px rgba(16, 185, 129, 0.55); }
+    .btn-stream.active {
+      background: linear-gradient(135deg, #FF3366, #BE123C) !important;
+      box-shadow: 0 0 25px rgba(255, 51, 102, 0.6) !important;
+      animation: pulse-stream 1.5s infinite;
+    }
+    @keyframes pulse-stream {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(0.99); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Tactical Preset Cards */
+    .presets-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748B;
+      margin: 22px 0 10px 0;
+      display: block;
+    }
+    .presets { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .preset-btn {
+      background: rgba(10, 15, 30, 0.75);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-left: 3px solid #38BDF8;
+      color: #94A3B8;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: var(--cyan);
+      color: #F8FAFC;
+      transform: translateX(3px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+    .preset-btn strong { display: block; font-size: 0.83rem; margin-bottom: 2px; }
+    .preset-btn.fail { border-left-color: var(--red); }
+    .preset-btn.fail strong { color: #FCA5A5; }
+    .preset-btn.pass { border-left-color: var(--green); }
+    .preset-btn.pass strong { color: #86EFAC; }
+    .preset-btn.tool { border-left-color: var(--cyan); }
+    .preset-btn.tool strong { color: #BAE6FD; }
+
+    /* Viewport Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      background: rgba(10, 15, 30, 0.6);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.15);
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(59, 130, 246, 0.25));
+      border: 1px solid var(--cyan);
+      color: #FFFFFF;
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.25);
+    }
+
+    /* Visualization Screen */
+    .vis-card {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 20px;
+      background: #040711;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 290px;
+      position: relative;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8), 0 8px 30px rgba(0, 0, 0, 0.5);
+    }
+    .vis-card::before {
+      content: 'LIVE NEURAL SENSOR FEED // 1080P PROJECTION';
+      position: absolute;
+      top: 6px;
+      left: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      color: #38BDF8;
+      opacity: 0.8;
+    }
+    .vis-card img {
+      width: 100%;
+      max-width: 820px;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 16px auto 0 auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Telemetry 4-Metric Grid */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .metric-box {
+      background: rgba(10, 16, 32, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+    .metric-box::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+    .metric-title {
+      font-size: 0.68rem;
+      color: #64748B;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+    .metric-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #F8FAFC;
+    }
+    .status-pass {
+      color: var(--green) !important;
+      text-shadow: 0 0 12px var(--green-glow);
+    }
+    .status-fail {
+      color: var(--red) !important;
+      text-shadow: 0 0 12px var(--red-glow);
+    }
+
+    /* Terminal Console Drawer */
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .console-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .copy-btn {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #38BDF8;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover { background: rgba(56, 189, 248, 0.25); color: #FFFFFF; }
+    .json-box {
+      background: #02040A;
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #38BDF8;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7);
+    }
+    .json-box::-webkit-scrollbar { width: 6px; }
+    .json-box::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 3px; }
   </style>
 </head>
 <body>
+
+  <!-- Top Mission Control Header -->
   <div class="header">
-    <div>
-      <h1>TAG-Net: Interactive Grasp Synthesis API Studio</h1>
-      <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Dynamic Feature Alteration & Multi-Contact Safety Demonstration</p>
+    <div class="header-branding">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <h1>TAG-NET // AUTONOMOUS GRASP SYNTHESIS STUDIO</h1>
+        <p>TASK-AWARE AFFORDANCE GATING • 6-DoF ROBOTIC SAFETY KINEMATICS</p>
+      </div>
     </div>
-    <div>
-      <a href="/docs" target="_blank" class="docs-link">📖 Interactive Swagger API Docs (/docs)</a>
+    <div class="header-telemetry">
+      <div class="hud-pill">
+        <span class="beacon"></span>
+        <span>CORE ONLINE</span>
+      </div>
+      <div class="hud-pill">
+        <span>DEVICE: <span id="device_name" style="color: var(--cyan);">HOST CPU</span></span>
+      </div>
+      <a href="/docs" target="_blank" class="docs-btn">📖 SWAGGER API SPECS ↗</a>
     </div>
   </div>
 
   <div class="grid">
     <!-- Left Controls Panel -->
     <div class="panel">
-      <h2>1. Input Features & Parameters</h2>
+      <h2>01 // HYPERPARAMETER & SENSOR MATRIX</h2>
 
       <div class="form-group">
-        <label>Object Type (Tool Category):</label>
-        <select id="tool_type" onchange="triggerUpdate()">
-          <option value="knife">Knife (Sharp Blade vs. Handle)</option>
-          <option value="mug">Mug (Drinking Rim vs. Handle)</option>
-          <option value="screwdriver">Screwdriver (Metal Shaft vs. Handle)</option>
+        <label>TARGET OBJECT CATEGORY <span class="tag-val" id="cat_badge">KNIFE</span></label>
+        <select id="tool_type" onchange="document.getElementById('cat_badge').innerText = this.value.toUpperCase(); triggerUpdate();">
+          <option value="knife">🔪 Knife (Hazardous Blade vs. Handle)</option>
+          <option value="mug">☕ Mug (Sanitary Rim vs. Ergonomic Handle)</option>
+          <option value="screwdriver">🪛 Screwdriver (Metal Shaft vs. Grip)</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>Sample Index (Random Variation):</label>
+        <label>TEST VARIATION SAMPLE (SEED) <span class="tag-val">INDEX</span></label>
         <input type="number" id="sample_idx" value="1" min="0" max="25" onchange="triggerUpdate()" oninput="triggerUpdate()">
       </div>
 
       <div class="form-group">
-        <label>Model Architecture:</label>
+        <label>NEURAL ARCHITECTURE <span class="tag-val">MODEL</span></label>
         <select id="model_type" onchange="triggerUpdate()">
-          <option value="tag_net">TAG-Net (Proposed Affordance-Gated)</option>
-          <option value="baseline">Baseline (Classical Geometric-Only)</option>
+          <option value="tag_net">⚡ TAG-Net (Affordance-Gated Attention)</option>
+          <option value="baseline">📉 Baseline (Classical Geometry-Only)</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>Task Context Mode:</label>
+        <label>ROBOT OPERATIONAL INTENTION <span class="tag-val">CONTEXT</span></label>
         <select id="task_mode" onchange="triggerUpdate()">
-          <option value="safe_handover">Safe Handover to Human (Handle Priority)</option>
-          <option value="tool_use">Direct Functional Tool Use</option>
-          <option value="unconstrained">Unconstrained Pick & Place</option>
+          <option value="safe_handover">🛡️ Safe Handover to Human (Handle Priority)</option>
+          <option value="tool_use">🔧 Direct Functional Tool Use</option>
+          <option value="unconstrained">📦 Unconstrained Geometric Pick & Place</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>Affordance Gating Weight (&alpha;): <span class="slider-val" id="alpha_display">1.00</span></label>
+        <label>AFFORDANCE GATING WEIGHT (&alpha;) <span class="tag-val" id="alpha_display">1.00</span></label>
         <input type="range" id="affordance_weight" min="0" max="1" step="0.05" value="1.0" oninput="document.getElementById('alpha_display').innerText = parseFloat(this.value).toFixed(2); triggerUpdate();">
-        <small style="color: var(--muted); font-size: 0.75rem;">&alpha; = 0.0 (Pure Geometry) &rarr; &alpha; = 1.0 (Strict Task Affordance)</small>
+        <small class="slider-hint">&alpha; = 0.0 (Blind Geometry) &rarr; &alpha; = 1.0 (Strict Task Affordance)</small>
       </div>
 
       <div class="form-group">
-        <label>Grasp Quality Threshold: <span class="slider-val" id="thresh_display">0.05</span></label>
+        <label>QUALITY THRESHOLD <span class="tag-val" id="thresh_display">0.05</span></label>
         <input type="range" id="quality_threshold" min="0.01" max="0.50" step="0.01" value="0.05" oninput="document.getElementById('thresh_display').innerText = parseFloat(this.value).toFixed(2); triggerUpdate();">
       </div>
 
-      <button type="button" class="btn" onclick="executeInference(event)">▶ Run Single Inference</button>
-      <button type="button" class="btn btn-stream" id="stream_btn" onclick="toggleLiveStream(event)">🔴 Start Continuous Live Stream</button>
+      <button type="button" class="btn" onclick="executeInference(event)">▶ EXECUTE SINGLE INFERENCE</button>
+      <button type="button" class="btn btn-stream" id="stream_btn" onclick="toggleLiveStream(event)">🔴 START REAL-TIME STREAMING</button>
 
-      <div style="margin-top: 20px;">
-        <label>One-Click Demonstration Presets:</label>
-        <div class="presets">
-          <button type="button" class="preset-btn" onclick="applyPreset('mug', 'baseline', 0.0, 'unconstrained', 1, event)">
-            <strong>❌ Preset A: Classical Baseline Failure</strong>
-            Mug Drinking Rim Grasp (&alpha; = 0.0 &rarr; DANGEROUS [FAIL])
-          </button>
-          <button type="button" class="preset-btn" onclick="applyPreset('mug', 'tag_net', 1.0, 'safe_handover', 1, event)">
-            <strong>✅ Preset B: TAG-Net Semantic Correction</strong>
-            Mug Handle Grasp (&alpha; = 1.0 &rarr; SAFE [PASS])
-          </button>
-          <button type="button" class="preset-btn" onclick="applyPreset('knife', 'tag_net', 1.0, 'safe_handover', 0, event)">
-            <strong>🔪 Preset C: Knife Handle Handover</strong>
-            Sharp Blade Avoidance (&alpha; = 1.0 &rarr; SAFE [PASS])
-          </button>
-          <button type="button" class="preset-btn" onclick="applyPreset('screwdriver', 'tag_net', 1.0, 'safe_handover', 0, event)">
-            <strong>🪛 Preset D: Screwdriver Ergonomic Grip</strong>
-            Metal Shaft Clearance (&alpha; = 1.0 &rarr; SAFE [PASS])
-          </button>
-        </div>
+      <span class="presets-title">// ONE-CLICK DEMONSTRATION BENCHMARKS</span>
+      <div class="presets">
+        <button type="button" class="preset-btn fail" onclick="applyPreset('mug', 'baseline', 0.0, 'unconstrained', 1, event)">
+          <strong>❌ Preset A: Classical Baseline Failure</strong>
+          Mug Drinking Rim Contact (&alpha; = 0.0 &rarr; DANGEROUS [FAIL])
+        </button>
+        <button type="button" class="preset-btn pass" onclick="applyPreset('mug', 'tag_net', 1.0, 'safe_handover', 1, event)">
+          <strong>✅ Preset B: TAG-Net Semantic Correction</strong>
+          Mug Handle Alignment (&alpha; = 1.0 &rarr; SAFE [PASS])
+        </button>
+        <button type="button" class="preset-btn tool" onclick="applyPreset('knife', 'tag_net', 1.0, 'safe_handover', 0, event)">
+          <strong>🔪 Preset C: Knife Blade Clearance</strong>
+          Sharp Blade Avoidance (&alpha; = 1.0 &rarr; SAFE [PASS])
+        </button>
+        <button type="button" class="preset-btn tool" onclick="applyPreset('screwdriver', 'tag_net', 1.0, 'safe_handover', 0, event)">
+          <strong>🪛 Preset D: Screwdriver Ergonomic Grip</strong>
+          Metal Shaft Clearance (&alpha; = 1.0 &rarr; SAFE [PASS])
+        </button>
       </div>
     </div>
 
     <!-- Right Results Panel -->
     <div class="panel">
-      <!-- Tabs -->
+      <!-- Channel Switcher -->
       <div class="tab-bar">
-        <button type="button" class="tab-btn active" id="tab_grasp_btn" onclick="switchTab('grasp')">📸 AI Grasp Heatmap & Detection (Real-Time)</button>
-        <button type="button" class="tab-btn" id="tab_robot_btn" onclick="switchTab('robot')">🤖 3D Robot Arm Execution (MuJoCo Physics)</button>
+        <button type="button" class="tab-btn active" id="tab_grasp_btn" onclick="switchTab('grasp')">📸 CHANNEL 01: AI HEATMAP & DETECTION</button>
+        <button type="button" class="tab-btn" id="tab_robot_btn" onclick="switchTab('robot')">🤖 CHANNEL 02: 6-DoF ROBOT SIMULATION</button>
       </div>
 
-      <!-- View 1: AI Grasp Detection & Heatmaps -->
+      <!-- View 1: AI Heatmap & Grasp Detection -->
       <div id="grasp_view">
         <div class="vis-card">
           <img id="vis_img" 
                src="/visualization.png?tool_type=knife&sample_idx=1&model_type=tag_net&task_mode=safe_handover&affordance_weight=1.0&quality_threshold=0.05" 
                alt="AI Grasp Heatmap & Detection"
-               style="width: 100%; max-width: 820px; height: auto; display: block; margin: 0 auto; border-radius: 6px;"
           >
         </div>
 
         <div class="metrics">
           <div class="metric-box">
-            <div class="metric-title">Safety Verdict</div>
+            <div class="metric-title">Safety Matrix</div>
             <div class="metric-val status-pass" id="verdict_val">PASS</div>
           </div>
           <div class="metric-box">
-            <div class="metric-title">Grasp Center (X, Y)</div>
+            <div class="metric-title">Grasp Center (u, v)</div>
             <div class="metric-val" id="coords_val">(145, 117)</div>
           </div>
           <div class="metric-box">
@@ -581,23 +1011,26 @@ def interactive_demo_page():
             <div class="metric-val" id="angle_val">37.2°</div>
           </div>
           <div class="metric-box">
-            <div class="metric-title">Latency / Speed</div>
+            <div class="metric-title">Inference Rate</div>
             <div class="metric-val" id="latency_val">~8 ms (120 FPS)</div>
           </div>
         </div>
 
-        <h3 style="font-size: 0.9rem; color: var(--muted); margin-bottom: 8px;">Raw HTTP API JSON Response:</h3>
+        <div class="console-header">
+          <span class="console-title">// REST API TELEMETRY STREAM</span>
+          <button type="button" class="copy-btn" onclick="copyJsonOutput()">📋 COPY JSON</button>
+        </div>
         <div class="json-box" id="json_output">{ "message": "Inference results will appear here..." }</div>
       </div>
 
       <!-- View 2: 3D Articulated Robot Arm Physics -->
       <div id="robot_3d_view" style="display: none;">
-        <div class="vis-card" style="padding: 15px;">
+        <div class="vis-card" style="padding: 16px;">
           <img src="/assets/arm_simulation_3d.gif" style="max-width: 100%; border-radius: 8px;" alt="3D Robot Arm Simulation">
         </div>
-        <div class="metric-box" style="margin-bottom: 15px; text-align: left; padding: 15px;">
-          <h4 style="color: var(--green); margin-bottom: 6px;">Physics Simulation: 6-DoF Articulated Manipulator</h4>
-          <p style="color: var(--text); font-size: 0.85rem; line-height: 1.6;">
+        <div class="metric-box" style="margin-bottom: 15px; text-align: left; padding: 18px;">
+          <h4 style="color: var(--cyan); margin-bottom: 8px; font-size: 0.95rem; font-weight: 800;">PHYSICS TELEMETRY: 6-DoF ARTICULATED MANIPULATOR</h4>
+          <p style="color: var(--text-main); font-size: 0.85rem; line-height: 1.7;">
             • <strong>Kinematic Pipeline:</strong> 2D grasp center (u, v) translated into Cartesian workspace (X, Y, Z).<br>
             • <strong>Vertical Alignment:</strong> Top-down constraint (j2 + j3 + j4 = &pi;) guarantees perpendicular approach.<br>
             • <strong>Contact Physics:</strong> Fingers clamp flush across the 32mm handle diameter with zero slip and lift tool 180mm into the air.
@@ -612,7 +1045,9 @@ def interactive_demo_page():
     let isStreaming = false;
     let streamTimer = null;
     let currentSample = 1;
-    let inFlight = false;
+    let debounceTimer = null;
+    let currentInferenceId = 0;
+    let activePreloader = null;
 
     function switchTab(tab) {
       if (tab === 'grasp') {
@@ -634,7 +1069,7 @@ def interactive_demo_page():
       document.getElementById('sample_idx').value = currentSample;
       await executeInference();
       if (isStreaming) {
-        streamTimer = setTimeout(streamLoop, 400);
+        streamTimer = setTimeout(streamLoop, 350);
       }
     }
 
@@ -647,20 +1082,16 @@ def interactive_demo_page():
       const btn = document.getElementById('stream_btn');
 
       if (isStreaming) {
-        btn.innerText = '⏹ Stop Live Stream';
+        btn.innerText = '⏹ STOP LIVE STREAM';
         btn.classList.add('active');
         streamLoop();
       } else {
-        btn.innerText = '🔴 Start Continuous Live Stream';
+        btn.innerText = '🔴 START REAL-TIME STREAMING';
         btn.classList.remove('active');
         if (streamTimer) clearTimeout(streamTimer);
       }
       return false;
     }
-
-    let debounceTimer = null;
-    let currentInferenceId = 0;
-    let activePreloader = null;
 
     function triggerUpdate() {
       if (isStreaming) return;
@@ -697,7 +1128,6 @@ def interactive_demo_page():
         }
       };
       activePreloader.onerror = () => {
-        console.warn("Direct image reload fallback for:", imgUrl);
         if (inferenceId === currentInferenceId) {
           document.getElementById('vis_img').src = imgUrl;
         }
@@ -749,6 +1179,7 @@ def interactive_demo_page():
         event.stopPropagation();
       }
       document.getElementById('tool_type').value = tool;
+      document.getElementById('cat_badge').innerText = tool.toUpperCase();
       document.getElementById('model_type').value = model;
       document.getElementById('affordance_weight').value = alpha;
       document.getElementById('alpha_display').innerText = parseFloat(alpha).toFixed(2);
@@ -756,6 +1187,15 @@ def interactive_demo_page():
       document.getElementById('sample_idx').value = sampleIdx;
       executeInference();
       return false;
+    }
+
+    function copyJsonOutput() {
+      const text = document.getElementById('json_output').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.innerText = '✅ COPIED!';
+        setTimeout(() => { btn.innerText = '📋 COPY JSON'; }, 1800);
+      });
     }
 
     // Auto-attach live event listeners
@@ -772,6 +1212,11 @@ def interactive_demo_page():
         document.getElementById('thresh_display').innerText = parseFloat(document.getElementById('quality_threshold').value).toFixed(2);
         triggerUpdate();
       });
+
+      // Update hardware badge
+      fetch('/health').then(r => r.json()).then(h => {
+        if (h.gpu_name) document.getElementById('device_name').innerText = h.gpu_name;
+      }).catch(() => {});
     });
   </script>
 </body>
