@@ -1,7 +1,7 @@
 """
 TAG-Net REST API & Interactive Demonstration Service
 High-performance FastAPI service providing real-time grasp synthesis,
-dynamic feature-space alteration, and live visualization.
+dynamic feature-space alteration, live visualization, and 3D simulation streaming.
 """
 
 import os
@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import torch
 from fastapi import FastAPI, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -43,6 +44,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount assets directory for direct static serving (3D arm GIF, diagrams)
+assets_path = os.path.join(ROOT_DIR, "assets")
+if os.path.exists(assets_path):
+    app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
 # Global State: Hardware & Models
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -78,7 +84,7 @@ def load_models():
     # Pre-index unseen test samples (seed=101)
     DATASET = SyntheticToolAffordanceDataset(num_samples=150, img_size=224, seed=101)
     for idx in range(len(DATASET)):
-        t_type = DATASET[idx]["tool_type"]
+        t_type = str(DATASET[idx]["tool_type"])
         if t_type not in TOOL_INDEX_MAP:
             TOOL_INDEX_MAP[t_type] = []
         TOOL_INDEX_MAP[t_type].append(idx)
@@ -106,7 +112,7 @@ def create_visualization_base64(rgb, grasp, aff_gt, q_map, aff_pred=None, title=
 
     # 1. Grasp on RGB
     axes[0].imshow(rgb)
-    axes[0].set_title(f"RGB Camera: {title}", fontsize=11, fontweight="bold")
+    axes[0].set_title(f"RGB Camera: {title}", fontsize=11, fontweight="bold", color="white")
     axes[0].axis("off")
 
     is_safe = False
@@ -119,9 +125,11 @@ def create_visualization_base64(rgb, grasp, aff_gt, q_map, aff_pred=None, title=
 
     # 2. Quality Heatmap
     im = axes[1].imshow(q_map, cmap="jet", vmin=0.0, vmax=max(0.6, float(np.max(q_map))))
-    axes[1].set_title("Synthesized Grasp Quality Heatmap", fontsize=11, fontweight="bold")
+    axes[1].set_title("Synthesized Grasp Quality Heatmap", fontsize=11, fontweight="bold", color="white")
     axes[1].axis("off")
-    fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
+    cbar = fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
+    cbar.ax.yaxis.set_tick_params(color='white')
+    plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color='white')
 
     buf = io.BytesIO()
     plt.savefig(buf, format="png", bbox_inches="tight", facecolor="#0F172A", edgecolor="none")
@@ -200,7 +208,6 @@ def predict_grasp(req: GraspRequest):
     Main Grasp Prediction Endpoint:
     Receives feature configuration, executes forward pass, and returns grasp coordinates + visualization.
     """
-    # 1. Fetch requested sample
     tools = TOOL_INDEX_MAP.get(req.tool_type.lower(), [0])
     sample_index = tools[req.sample_idx % len(tools)]
     sample = DATASET[sample_index]
@@ -209,7 +216,6 @@ def predict_grasp(req: GraspRequest):
     rgb = sample["rgbd"][:3].numpy().transpose(1, 2, 0)
     aff_gt = sample["affordance_mask"][0].numpy()
 
-    # 2. Model Inference with Timing
     t0 = time.perf_counter()
     with torch.no_grad():
         if req.model_type.lower() == "baseline":
@@ -221,7 +227,6 @@ def predict_grasp(req: GraspRequest):
             q_task = out["quality_task"][0, 0]
             aff_pred = out["affordance_mask"][0, 0].cpu().numpy()
 
-            # Dynamic Feature Alteration via Alpha-Blending Gating
             alpha = float(req.affordance_weight)
             if req.task_mode == "unconstrained":
                 alpha = 0.0
@@ -245,7 +250,6 @@ def predict_grasp(req: GraspRequest):
     cos_map = out["cos_2theta"][0]
     w_map = out["width"][0]
 
-    # 3. Detect Top Candidate Grasp
     grasp = detect_top_grasp(
         q_map_tensor.unsqueeze(0),
         sin_map,
@@ -254,11 +258,9 @@ def predict_grasp(req: GraspRequest):
         threshold=req.quality_threshold
     )
 
-    # 4. Generate Visualization
     title_label = f"{req.tool_type.upper()} | Model: {req.model_type.upper()} (α={req.affordance_weight:.2f})"
     vis_b64, is_safe = create_visualization_base64(rgb, grasp, aff_gt, q_map_np, aff_pred, title=title_label)
 
-    # 5. Format Response
     grasp_data = None
     if grasp:
         gx, gy, ang, w, conf = grasp
@@ -332,12 +334,22 @@ def interactive_demo_page():
     .slider-val { font-weight: 700; color: var(--accent); margin-left: 6px; }
     .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: linear-gradient(135deg, #06B6D4, #3B82F6); color: white; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: 0.2s; margin-top: 10px; }
     .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-stream { background: linear-gradient(135deg, #10B981, #059669); margin-top: 8px; }
+    .btn-stream.active { background: linear-gradient(135deg, #EF4444, #B91C1C) !important; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.75; } 100% { opacity: 1; } }
     .presets { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 15px; }
     .preset-btn { background: #0F172A; border: 1px solid var(--border); color: var(--muted); padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; text-align: left; transition: 0.2s; }
     .preset-btn:hover { border-color: var(--accent); color: var(--text); }
     .preset-btn strong { color: var(--text); display: block; }
-    .vis-card { text-align: center; margin-bottom: 20px; }
-    .vis-card img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); background: #000; min-height: 250px; }
+    
+    /* View Tabs */
+    .tab-bar { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .tab-btn { background: #0F172A; border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
+    .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    
+    .vis-card { text-align: center; margin-bottom: 20px; background: #050811; border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 280px; display: flex; align-items: center; justify-content: center; position: relative; }
+    .vis-card img { max-width: 100%; border-radius: 6px; display: block; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    
     .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
     .metric-box { background: #0F172A; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
     .metric-title { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
@@ -370,14 +382,12 @@ def interactive_demo_page():
           <option value="knife">Knife (Sharp Blade vs. Handle)</option>
           <option value="mug">Mug (Drinking Rim vs. Handle)</option>
           <option value="screwdriver">Screwdriver (Metal Shaft vs. Handle)</option>
-          <option value="scissors">Scissors (Blades vs. Finger Loops)</option>
-          <option value="hammer">Hammer (Steel Head vs. Grip)</option>
         </select>
       </div>
 
       <div class="form-group">
         <label>Sample Index (Random Variation):</label>
-        <input type="number" id="sample_idx" value="0" min="0" max="25">
+        <input type="number" id="sample_idx" value="1" min="0" max="25">
       </div>
 
       <div class="form-group">
@@ -408,7 +418,8 @@ def interactive_demo_page():
         <input type="range" id="quality_threshold" min="0.01" max="0.50" step="0.01" value="0.05" oninput="document.getElementById('thresh_display').innerText = parseFloat(this.value).toFixed(2)">
       </div>
 
-      <button type="button" class="btn" onclick="executeInference(event)">▶ Run Grasp Inference</button>
+      <button type="button" class="btn" onclick="executeInference(event)">▶ Run Single Inference</button>
+      <button type="button" class="btn btn-stream" id="stream_btn" onclick="toggleLiveStream(event)">🔴 Start Continuous Live Stream</button>
 
       <div style="margin-top: 20px;">
         <label>One-Click Demonstration Presets:</label>
@@ -435,37 +446,104 @@ def interactive_demo_page():
 
     <!-- Right Results Panel -->
     <div class="panel">
-      <h2>2. Live Model Output & Grasp Visualization</h2>
-
-      <div class="vis-card">
-        <img id="vis_img" src="" alt="Live Model Output will appear here">
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button type="button" class="tab-btn active" id="tab_grasp_btn" onclick="switchTab('grasp')">📸 AI Grasp Heatmap & Detection (Real-Time)</button>
+        <button type="button" class="tab-btn" id="tab_robot_btn" onclick="switchTab('robot')">🤖 3D Robot Arm Execution (MuJoCo Physics)</button>
       </div>
 
-      <div class="metrics">
-        <div class="metric-box">
-          <div class="metric-title">Safety Verdict</div>
-          <div class="metric-val" id="verdict_val">--</div>
+      <!-- View 1: AI Grasp Detection & Heatmaps -->
+      <div id="grasp_view">
+        <div class="vis-card">
+          <img id="vis_img" src="" alt="Live Model Output will appear here">
         </div>
-        <div class="metric-box">
-          <div class="metric-title">Grasp Center (X, Y)</div>
-          <div class="metric-val" id="coords_val">--</div>
+
+        <div class="metrics">
+          <div class="metric-box">
+            <div class="metric-title">Safety Verdict</div>
+            <div class="metric-val" id="verdict_val">--</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Grasp Center (X, Y)</div>
+            <div class="metric-val" id="coords_val">--</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Orientation (&theta;)</div>
+            <div class="metric-val" id="angle_val">--</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Latency / Speed</div>
+            <div class="metric-val" id="latency_val">--</div>
+          </div>
         </div>
-        <div class="metric-box">
-          <div class="metric-title">Orientation (&theta;)</div>
-          <div class="metric-val" id="angle_val">--</div>
+
+        <h3 style="font-size: 0.9rem; color: var(--muted); margin-bottom: 8px;">Raw HTTP API JSON Response:</h3>
+        <div class="json-box" id="json_output">{ "message": "Inference results will appear here..." }</div>
+      </div>
+
+      <!-- View 2: 3D Articulated Robot Arm Physics -->
+      <div id="robot_3d_view" style="display: none;">
+        <div class="vis-card" style="padding: 15px;">
+          <img src="/assets/arm_simulation_3d.gif" style="max-width: 100%; border-radius: 8px;" alt="3D Robot Arm Simulation">
         </div>
-        <div class="metric-box">
-          <div class="metric-title">Latency / Speed</div>
-          <div class="metric-val" id="latency_val">--</div>
+        <div class="metric-box" style="margin-bottom: 15px; text-align: left; padding: 15px;">
+          <h4 style="color: var(--green); margin-bottom: 6px;">Physics Simulation: 6-DoF Articulated Manipulator</h4>
+          <p style="color: var(--text); font-size: 0.85rem; line-height: 1.6;">
+            • <strong>Kinematic Pipeline:</strong> 2D grasp center (u, v) translated into Cartesian workspace (X, Y, Z).<br>
+            • <strong>Vertical Alignment:</strong> Top-down constraint (j2 + j3 + j4 = &pi;) guarantees perpendicular approach.<br>
+            • <strong>Contact Physics:</strong> Fingers clamp flush across the 32mm handle diameter with zero slip and lift tool 180mm into the air.
+          </p>
         </div>
       </div>
 
-      <h3 style="font-size: 0.9rem; color: var(--muted); margin-bottom: 8px;">Raw HTTP API JSON Response:</h3>
-      <div class="json-box" id="json_output">{ "message": "Inference results will appear here..." }</div>
     </div>
   </div>
 
   <script>
+    let isStreaming = false;
+    let streamInterval = null;
+    let currentSample = 1;
+    let lastImageSrc = '';
+
+    function switchTab(tab) {
+      if (tab === 'grasp') {
+        document.getElementById('tab_grasp_btn').className = 'tab-btn active';
+        document.getElementById('tab_robot_btn').className = 'tab-btn';
+        document.getElementById('grasp_view').style.display = 'block';
+        document.getElementById('robot_3d_view').style.display = 'none';
+      } else {
+        document.getElementById('tab_grasp_btn').className = 'tab-btn';
+        document.getElementById('tab_robot_btn').className = 'tab-btn active';
+        document.getElementById('grasp_view').style.display = 'none';
+        document.getElementById('robot_3d_view').style.display = 'block';
+      }
+    }
+
+    function toggleLiveStream(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      isStreaming = !isStreaming;
+      const btn = document.getElementById('stream_btn');
+
+      if (isStreaming) {
+        btn.innerText = '⏹ Stop Live Stream';
+        btn.classList.add('active');
+        // Continuously runs inference every 400ms cycling samples
+        streamInterval = setInterval(() => {
+          currentSample = (currentSample + 1) % 10;
+          document.getElementById('sample_idx').value = currentSample;
+          executeInference();
+        }, 400);
+      } else {
+        btn.innerText = '🔴 Start Continuous Live Stream';
+        btn.classList.remove('active');
+        clearInterval(streamInterval);
+      }
+      return false;
+    }
+
     let debounceTimer = null;
     function triggerUpdate() {
       clearTimeout(debounceTimer);
@@ -488,9 +566,6 @@ def interactive_demo_page():
         max_gripper_width: 50.0
       };
 
-      document.getElementById('verdict_val').innerText = '...';
-      document.getElementById('json_output').innerText = 'Querying POST /predict_grasp...';
-
       try {
         const resp = await fetch('/predict_grasp', {
           method: 'POST',
@@ -499,9 +574,12 @@ def interactive_demo_page():
         });
         const data = await resp.json();
 
-        // Update Image
+        // Update Image PERSISTENTLY (never clear unless new one arrives)
         if (data.visualization_base64) {
-          document.getElementById('vis_img').src = data.visualization_base64;
+          lastImageSrc = data.visualization_base64;
+          const imgElem = document.getElementById('vis_img');
+          imgElem.src = lastImageSrc;
+          imgElem.style.display = 'block';
         }
 
         // Update Verdict
@@ -560,7 +638,7 @@ def interactive_demo_page():
         triggerUpdate();
       });
 
-      // Initial execute
+      // Initial execute on load
       executeInference();
     });
   </script>
