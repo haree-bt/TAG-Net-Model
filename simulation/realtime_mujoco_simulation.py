@@ -63,16 +63,17 @@ def get_agam_grasp_prediction(tool_name="knife"):
     with torch.no_grad():
         out = model(x)
         q_task = out["quality_task"][0, 0].numpy()
-        ang_out = out["angle"][0].numpy()
         w_out = out["width"][0, 0].numpy()
+        sin_map = out["sin_2theta"][0, 0].numpy()
+        cos_map = out["cos_2theta"][0, 0].numpy()
 
     # AGAM Affordance-Gated Argmax
     v_best, u_best = np.unravel_index(np.argmax(q_task), q_task.shape)
     best_score = float(q_task[v_best, u_best])
 
     # Grasp angle
-    sin2 = ang_out[0, v_best, u_best]
-    cos2 = ang_out[1, v_best, u_best]
+    sin2 = float(sin_map[v_best, u_best])
+    cos2 = float(cos_map[v_best, u_best])
     angle_rad = 0.5 * math.atan2(sin2, cos2)
     angle_deg = math.degrees(angle_rad)
 
@@ -280,17 +281,17 @@ def solve_ik_top_down(model, data, target_x, target_y, target_z, initial_guess=(
 
 def run_interactive_simulation(tool_name="knife"):
     print("=" * 70)
-    print(f"🤖 TAG-Net Real-Time Robotic Arm Simulation: [{tool_name.upper()}]")
+    print(f"[TAG-Net Real-Time Robotic Arm Simulation: {tool_name.upper()}]")
     print("=" * 70)
 
     # 1. Run AGAM Prediction
     print("\n[Step 1: Running AGAM Affordance Network Inference]...")
     pred = get_agam_grasp_prediction(tool_name)
-    print(f"  • Target Object        : {tool_name.upper()}")
-    print(f"  • Affordance Pixel (u,v): ({pred['u']}, {pred['v']})")
-    print(f"  • AGAM Confidence Score: {pred['score']:.4f}")
-    print(f"  • Grasp Orientation    : {pred['angle_deg']:.1f}°")
-    print(f"  • Safety Verification  : {'✅ PASS (Handle Viable)' if pred['is_safe'] else '❌ FAIL'}")
+    print(f"  - Target Object        : {tool_name.upper()}")
+    print(f"  - Affordance Pixel (u,v): ({pred['u']}, {pred['v']})")
+    print(f"  - AGAM Confidence Score: {pred['score']:.4f}")
+    print(f"  - Grasp Orientation    : {pred['angle_deg']:.1f} deg")
+    print(f"  - Safety Verification  : {'[PASS] (Handle Affordance Viable)' if pred['is_safe'] else '[FAIL]'}")
 
     # Set precise 3D target coordinates corresponding to AGAM grasp
     table_z = 0.709
@@ -340,10 +341,10 @@ def run_interactive_simulation(tool_name="knife"):
     ]
 
     print("\n[Step 2: Launching Hardware-Accelerated Real-Time MuJoCo 3D Window]...")
-    print("  • Orbit Camera : Left Click + Drag")
-    print("  • Pan / Zoom   : Right Click + Drag")
-    print("  • Pause/Resume : Spacebar")
-    print("  • Close Window : Esc / Window Close\n")
+    print("  - Orbit Camera : Left Click + Drag")
+    print("  - Pan / Zoom   : Right Click + Drag")
+    print("  - Pause/Resume : Spacebar")
+    print("  - Close Window : Esc / Window Close\n")
 
     # Initial setup
     data.qpos[0:5] = q_home
@@ -366,7 +367,7 @@ def run_interactive_simulation(tool_name="knife"):
                 if not viewer.is_running():
                     break
 
-                print(f"▶ {phase_name}")
+                print(f"--> {phase_name}")
 
                 for step in range(steps):
                     if not viewer.is_running():
@@ -412,7 +413,7 @@ def run_interactive_simulation(tool_name="knife"):
                     viewer.sync()
                     time.sleep(0.016)  # 60 FPS real-time sync
 
-            print(f"✅ Pick-and-Handover Cycle {cycle_count} Completed Successfully!")
+            print(f"[SUCCESS] Pick-and-Handover Cycle {cycle_count} Completed Successfully!")
             cycle_count += 1
             time.sleep(1.0)
 
