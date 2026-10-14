@@ -118,10 +118,10 @@ def build_mujoco_scene_xml(tool_type="knife", target_coords=(0.40, 0.0, 0.725)):
         """
         handover_text = "Delivering Chef Knife Handle-First (Blade Pointing Safely Away)"
     elif tool_type == "mug":
-        # Handle centered at ty=-0.052, Cup body at Y=0
+        # Handle centered at ty=-0.052, Cup body at Y=0, bottom rests flush on table surface
         tool_mjcf = f"""
       <!-- Target Tool Body: Ceramic Mug -->
-      <body name="tool_object" pos="{tx} 0 {tz}">
+      <body name="tool_object" pos="{tx} 0 {tz - 0.040}">
         <!-- Ceramic Cup Body -->
         <geom name="cup_body" type="cylinder" size="0.038 0.040" pos="0 0 0.040" rgba="0.88 0.90 0.95 1"/>
         <geom name="cup_rim" type="cylinder" size="0.036 0.004" pos="0 0 0.078" rgba="0.45 0.48 0.55 1"/>
@@ -312,6 +312,15 @@ def run_interactive_simulation(tool_name="knife"):
 
     tool_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "tool_object")
     marker_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "agam_marker")
+    ee_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "ee_gripper")
+
+    # Precise table resting coordinate and rigid gripper attachment offset
+    if tool_name == "mug":
+        tool_table_pos = np.array([tx, 0.0, tz - 0.040])
+        tool_offset = np.array([0.0, 0.052, -0.078])
+    else:
+        tool_table_pos = np.array([tx, ty, tz])
+        tool_offset = np.array([0.0, 0.0, -0.038])
 
     # 3. Solve Trajectory Waypoints
     tx, ty, tz = target_xyz
@@ -385,24 +394,11 @@ def run_interactive_simulation(tool_name="knife"):
 
                     # Tool motion logic
                     if tool_mode == "table":
-                        if tool_name == "mug":
-                            model.body_pos[tool_body_id] = [tx, 0.0, tz]
-                        else:
-                            model.body_pos[tool_body_id] = [tx, ty, tz]
-                    elif tool_mode == "lifting":
-                        cur_z = tz + smooth_t * 0.18
-                        if tool_name == "mug":
-                            model.body_pos[tool_body_id] = [tx, 0.0, cur_z]
-                        else:
-                            model.body_pos[tool_body_id] = [tx, ty, cur_z]
-                    elif tool_mode == "handover":
-                        # Transport from lift position to handover station
-                        start_pos = np.array([tx, (0.0 if tool_name == "mug" else ty), tz + 0.18])
-                        end_pos = np.array([hx, hy, hz])
-                        cur_pos = start_pos * (1.0 - smooth_t) + end_pos * smooth_t
-                        model.body_pos[tool_body_id] = cur_pos
-                    elif tool_mode == "at_handover":
-                        model.body_pos[tool_body_id] = [hx, hy, hz]
+                        model.body_pos[tool_body_id] = tool_table_pos
+                    else:
+                        # Once grasped ("lifting", "handover", "at_handover"), tool is rigidly locked to gripper
+                        ee_cur_pos = data.xpos[ee_id]
+                        model.body_pos[tool_body_id] = ee_cur_pos + tool_offset
 
                     # Marker pulse animation
                     pulse = 0.012 + 0.003 * math.sin(step * 0.15)
@@ -420,8 +416,9 @@ def run_interactive_simulation(tool_name="knife"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TAG-Net Interactive MuJoCo Real-Time Simulation")
-    parser.add_argument("--tool", type=str, default="knife", choices=["knife", "mug", "screwdriver"],
+    parser.add_argument("--tool", type=str, default="knife", choices=["knife", "mug", "screwdriver", "tool"],
                         help="Target tool to manipulate")
     args = parser.parse_args()
 
-    run_interactive_simulation(args.tool)
+    chosen_tool = "screwdriver" if args.tool.lower() == "tool" else args.tool.lower()
+    run_interactive_simulation(chosen_tool)
