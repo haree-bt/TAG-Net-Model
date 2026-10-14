@@ -17,7 +17,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import torch
 from fastapi import FastAPI, Request, Query, Response
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -31,6 +31,11 @@ from data.dataset import SyntheticToolAffordanceDataset
 from models import BaselineGraspNet, TAGNet
 from utils.metrics import detect_top_grasp
 from utils.visualize_results import draw_grasp_rectangle
+from simulation.task_simulation import (
+    generate_simulation_stream,
+    get_agam_task_grasp,
+    launch_task_simulation_desktop
+)
 
 app = FastAPI(
     title="TAG-Net Grasp Synthesis API",
@@ -251,10 +256,12 @@ def run_inference_core(
             aff_pred = out["affordance_mask"][0, 0].cpu().numpy()
 
             alpha = float(affordance_weight)
-            if task_mode == "unconstrained":
-                alpha = 0.0
-            elif task_mode == "tool_use":
-                alpha = min(0.8, alpha)
+            if task_mode in ["unconstrained", "pick_and_place"]:
+                alpha = min(0.65, alpha) if task_mode == "pick_and_place" else 0.0
+            elif task_mode in ["tool_use", "work_with_it"]:
+                alpha = min(0.85, alpha)
+            elif task_mode in ["safe_handover", "handover"]:
+                alpha = alpha
 
             if alpha < 0.99:
                 b_out = BASELINE_MODEL(x)
@@ -402,6 +409,63 @@ def get_latest_visualization():
         media_type="image/png",
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
     )
+
+
+@app.get("/simulation/stream")
+def get_simulation_stream(
+    tool_type: str = Query("knife"),
+    task_mode: str = Query("handover"),
+    width: int = Query(640),
+    height: int = Query(480),
+    fps: int = Query(25)
+):
+    """
+    Live MuJoCo 3D Physics Simulation Stream.
+    Streams real-time 6-DoF robotic arm pick-and-manipulation execution
+    modulated by TAG-Net AGAM heatmapping directly into HTML <img> elements.
+    """
+    return StreamingResponse(
+        generate_simulation_stream(tool_name=tool_type, task_name=task_mode, width=width, height=height, fps=fps),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+@app.post("/simulation/launch")
+def launch_desktop_simulation(
+    tool_type: str = Query("knife"),
+    task_mode: str = Query("handover")
+):
+    """
+    Spawns the native 60 FPS interactive desktop OpenGL MuJoCo window
+    for full mouse orbit, pan, and zoom manipulation.
+    """
+    import subprocess
+    norm_tool = "screwdriver" if tool_type.lower() in ["tool", "screwdriver"] else tool_type.lower()
+    norm_task = "handover" if task_mode.lower() in ["handover", "safe_handover", "human_hand"] else (
+        "work_with_it" if task_mode.lower() in ["work", "tool_use", "work_with_it"] else "pick_and_place"
+    )
+    cmd = [sys.executable, os.path.join(ROOT_DIR, "simulation", "realtime_mujoco_simulation.py"), "--tool", norm_tool, "--task", norm_task]
+    subprocess.Popen(cmd, cwd=ROOT_DIR)
+    return {"status": "launched", "tool": norm_tool, "task": norm_task}
+
+
+@app.get("/simulation/telemetry")
+def get_simulation_telemetry(
+    tool_type: str = Query("knife"),
+    task_mode: str = Query("handover")
+):
+    """Returns AGAM affordance coordinates, 3D target coordinates, and kinematic safety metrics."""
+    pred = get_agam_task_grasp(tool_type, task_mode)
+    return {
+        "tool": pred["tool"],
+        "task": pred["task"],
+        "heatmap_u": pred["u"],
+        "heatmap_v": pred["v"],
+        "confidence_score": round(pred["score"], 4),
+        "grasp_angle_deg": round(pred["angle_deg"], 2),
+        "target_cartesian_xyz": pred["target_xyz"],
+        "is_safe": pred["is_safe"]
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -937,11 +1001,11 @@ def interactive_demo_page():
       </div>
 
       <div class="form-group">
-        <label>ROBOT OPERATIONAL INTENTION <span class="tag-val">CONTEXT</span></label>
-        <select id="task_mode" onchange="triggerUpdate()">
-          <option value="safe_handover">🛡️ Safe Handover to Human (Handle Priority)</option>
-          <option value="tool_use">🔧 Direct Functional Tool Use</option>
-          <option value="unconstrained">📦 Unconstrained Geometric Pick & Place</option>
+        <label>ROBOT TASK INTENTION <span class="tag-val">3 TASKS</span></label>
+        <select id="task_mode" onchange="triggerUpdate(); updateSimulationView();">
+          <option value="handover">🤝 Pick and Give to Human Hand (Safe Handover)</option>
+          <option value="pick_and_place">📦 Pick and Place (Transport to Placement Zone)</option>
+          <option value="work_with_it">⚙️ Pick and Work With It (Functional Tool Execution)</option>
         </select>
       </div>
 
@@ -961,21 +1025,21 @@ def interactive_demo_page():
 
       <span class="presets-title">// ONE-CLICK DEMONSTRATION BENCHMARKS</span>
       <div class="presets">
-        <button type="button" class="preset-btn fail" onclick="applyPreset('mug', 'baseline', 0.0, 'unconstrained', 1, event)">
-          <strong>❌ Preset A: Classical Baseline Failure</strong>
-          Mug Drinking Rim Contact (&alpha; = 0.0 &rarr; DANGEROUS [FAIL])
+        <button type="button" class="preset-btn pass" onclick="applyPreset('mug', 'tag_net', 1.0, 'handover', 1, event)">
+          <strong>☕ Object 1: Mug &rarr; Safe Handover</strong>
+          Grasps base/body, presents handle to human hand (&alpha; = 1.0 &rarr; PASS)
         </button>
-        <button type="button" class="preset-btn pass" onclick="applyPreset('mug', 'tag_net', 1.0, 'safe_handover', 1, event)">
-          <strong>✅ Preset B: TAG-Net Semantic Correction</strong>
-          Mug Handle Alignment (&alpha; = 1.0 &rarr; SAFE [PASS])
+        <button type="button" class="preset-btn tool" onclick="applyPreset('knife', 'tag_net', 1.0, 'work_with_it', 0, event)">
+          <strong>🔪 Object 2: Knife &rarr; Work With It (Slicing)</strong>
+          Firm power grip on handle, slicing on board (&alpha; = 1.0 &rarr; PASS)
         </button>
-        <button type="button" class="preset-btn tool" onclick="applyPreset('knife', 'tag_net', 1.0, 'safe_handover', 0, event)">
-          <strong>🔪 Preset C: Knife Blade Clearance</strong>
-          Sharp Blade Avoidance (&alpha; = 1.0 &rarr; SAFE [PASS])
+        <button type="button" class="preset-btn tool" onclick="applyPreset('screwdriver', 'tag_net', 1.0, 'pick_and_place', 0, event)">
+          <strong>🪛 Object 3: Tool &rarr; Pick & Place to Tray</strong>
+          Ergonomic grip clearance, transports to tray (&alpha; = 1.0 &rarr; PASS)
         </button>
-        <button type="button" class="preset-btn tool" onclick="applyPreset('screwdriver', 'tag_net', 1.0, 'safe_handover', 0, event)">
-          <strong>🪛 Preset D: Screwdriver Ergonomic Grip</strong>
-          Metal Shaft Clearance (&alpha; = 1.0 &rarr; SAFE [PASS])
+        <button type="button" class="preset-btn fail" onclick="applyPreset('mug', 'baseline', 0.0, 'pick_and_place', 1, event)">
+          <strong>❌ Baseline Failure: Unconstrained Rim Contact</strong>
+          Grasps drinking rim directly (&alpha; = 0.0 &rarr; DANGEROUS [FAIL])
         </button>
       </div>
     </div>
@@ -1023,17 +1087,45 @@ def interactive_demo_page():
         <div class="json-box" id="json_output">{ "message": "Inference results will appear here..." }</div>
       </div>
 
-      <!-- View 2: 3D Articulated Robot Arm Physics -->
+      <!-- View 2: Live MuJoCo 3D Articulated Robot Arm Simulation -->
       <div id="robot_3d_view" style="display: none;">
-        <div class="vis-card" style="padding: 16px;">
-          <img src="/assets/arm_simulation_3d.gif" style="max-width: 100%; border-radius: 8px;" alt="3D Robot Arm Simulation">
+        <div class="vis-card" style="padding: 14px; position: relative; min-height: 480px;">
+          <img id="sim_stream_img" 
+               src="/simulation/stream?tool_type=knife&task_mode=handover" 
+               style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.4); display: block; margin: 0 auto;" 
+               alt="Live MuJoCo 3D Simulation Stream"
+          >
+          <div style="position: absolute; top: 22px; right: 26px; display: flex; gap: 8px;">
+            <button type="button" class="btn" style="width: auto; padding: 7px 16px; font-size: 0.78rem; background: linear-gradient(135deg, #10B981, #059669); margin: 0;" onclick="reloadSimulationStream(event)">🔄 RESTART STREAM</button>
+            <button type="button" class="btn" style="width: auto; padding: 7px 16px; font-size: 0.78rem; background: linear-gradient(135deg, #00C6FF, #0072FF); margin: 0;" onclick="launchDesktopViewer(event)">🖥️ LAUNCH 3D OPENGL WINDOW</button>
+          </div>
         </div>
+
+        <div class="metrics" style="margin-top: 15px;">
+          <div class="metric-box">
+            <div class="metric-title">Active Simulation Target</div>
+            <div class="metric-val status-pass" id="sim_obj_val">KNIFE</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Operational Task</div>
+            <div class="metric-val" id="sim_task_val">HANDOVER</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">AGAM 3D Target (X, Y, Z)</div>
+            <div class="metric-val" id="sim_xyz_val">0.38, 0.00, 0.725</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Physics Engine</div>
+            <div class="metric-val status-pass">MuJoCo 3.15</div>
+          </div>
+        </div>
+
         <div class="metric-box" style="margin-bottom: 15px; text-align: left; padding: 18px;">
-          <h4 style="color: var(--cyan); margin-bottom: 8px; font-size: 0.95rem; font-weight: 800;">PHYSICS TELEMETRY: 6-DoF ARTICULATED MANIPULATOR</h4>
-          <p style="color: var(--text-main); font-size: 0.85rem; line-height: 1.7;">
-            • <strong>Kinematic Pipeline:</strong> 2D grasp center (u, v) translated into Cartesian workspace (X, Y, Z).<br>
-            • <strong>Vertical Alignment:</strong> Top-down constraint (j2 + j3 + j4 = &pi;) guarantees perpendicular approach.<br>
-            • <strong>Contact Physics:</strong> Fingers clamp flush across the 32mm handle diameter with zero slip and lift tool 180mm into the air.
+          <h4 style="color: var(--cyan); margin-bottom: 8px; font-size: 0.95rem; font-weight: 800;">AGAM PERCEPTION &rarr; MUJOCO ROBOTIC KINEMATICS PIPELINE</h4>
+          <p style="color: var(--text-main); font-size: 0.85rem; line-height: 1.7;" id="sim_desc_text">
+            • <strong>AGAM Heatmapping:</strong> Modulates grasp quality based on the task intention (Handover leaves handle clear for human, Work With It locks power grip).<br>
+            • <strong>Inverse Kinematics:</strong> Solves 6-DoF perpendicular alignment (j2 + j3 + j4 = &pi;) with zero mechanical strain.<br>
+            • <strong>Contact Physics:</strong> Gripper fingers close flush onto the green affordance zone, lift object +180mm, and execute the task.
           </p>
         </div>
       </div>
@@ -1060,7 +1152,56 @@ def interactive_demo_page():
         document.getElementById('tab_robot_btn').className = 'tab-btn active';
         document.getElementById('grasp_view').style.display = 'none';
         document.getElementById('robot_3d_view').style.display = 'block';
+        updateSimulationView();
       }
+    }
+
+    function updateSimulationView() {
+      const tool = document.getElementById('tool_type').value;
+      const task = document.getElementById('task_mode').value;
+      const streamImg = document.getElementById('sim_stream_img');
+      if (streamImg) {
+        streamImg.src = `/simulation/stream?tool_type=${encodeURIComponent(tool)}&task_mode=${encodeURIComponent(task)}&t=${Date.now()}`;
+      }
+      
+      const objElem = document.getElementById('sim_obj_val');
+      if (objElem) objElem.innerText = tool.toUpperCase();
+      
+      const taskElem = document.getElementById('sim_task_val');
+      if (taskElem) taskElem.innerText = task.toUpperCase().replace(/_/g, ' ');
+
+      fetch(`/simulation/telemetry?tool_type=${encodeURIComponent(tool)}&task_mode=${encodeURIComponent(task)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.target_cartesian_xyz) {
+            const xyzElem = document.getElementById('sim_xyz_val');
+            if (xyzElem) xyzElem.innerText = `${d.target_cartesian_xyz[0].toFixed(2)}, ${d.target_cartesian_xyz[1].toFixed(2)}, ${d.target_cartesian_xyz[2].toFixed(3)}`;
+          }
+        }).catch(e => console.error(e));
+    }
+
+    function reloadSimulationStream(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      updateSimulationView();
+      return false;
+    }
+
+    async function launchDesktopViewer(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const tool = document.getElementById('tool_type').value;
+      const task = document.getElementById('task_mode').value;
+      try {
+        await fetch(`/simulation/launch?tool_type=${encodeURIComponent(tool)}&task_mode=${encodeURIComponent(task)}`, { method: 'POST' });
+      } catch (e) {
+        console.error(e);
+      }
+      return false;
     }
 
     async function streamLoop() {
@@ -1164,6 +1305,10 @@ def interactive_demo_page():
 
         // Update Raw JSON Output
         document.getElementById('json_output').innerText = JSON.stringify(data, null, 2);
+
+        if (document.getElementById('robot_3d_view').style.display !== 'none') {
+          updateSimulationView();
+        }
       } catch (err) {
         if (inferenceId === currentInferenceId) {
           document.getElementById('verdict_val').innerText = 'ERROR';
@@ -1186,6 +1331,7 @@ def interactive_demo_page():
       document.getElementById('task_mode').value = task;
       document.getElementById('sample_idx').value = sampleIdx;
       executeInference();
+      updateSimulationView();
       return false;
     }
 
