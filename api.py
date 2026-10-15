@@ -109,6 +109,7 @@ class GraspRequest(BaseModel):
     model_type: str = Field("tag_net", description="Model architecture: tag_net or baseline")
     quality_threshold: float = Field(0.05, ge=0.01, le=0.8, description="Minimum candidate grasp confidence")
     max_gripper_width: float = Field(50.0, ge=15.0, le=90.0, description="Maximum gripper finger opening (pixels)")
+    orientation_deg: float = Field(0.0, description="Object orientation on table in degrees (0-360)")
 
 
 PLOT_LOCK = threading.Lock()
@@ -230,6 +231,7 @@ def run_inference_core(
     affordance_weight: float = 1.0,
     quality_threshold: float = 0.05,
     max_gripper_width: float = 50.0,
+    orientation_deg: float = 0.0,
     generate_image: bool = True
 ):
     """
@@ -240,13 +242,26 @@ def run_inference_core(
     sample_index = tools[sample_idx % len(tools)]
     sample = DATASET[sample_index]
 
-    x = sample["rgbd"].unsqueeze(0).to(DEVICE)
-    rgb = sample["rgbd"][:3].numpy().transpose(1, 2, 0)
-    aff_gt = sample["affordance_mask"][0].numpy()
+    rgb_orig = sample["rgbd"][:3].numpy().transpose(1, 2, 0)
+    depth_orig = sample["rgbd"][3].numpy()
+    aff_gt_orig = sample["affordance_mask"][0].numpy()
+
+    if abs(orientation_deg) > 0.01:
+        M = cv2.getRotationMatrix2D((112, 112), -orientation_deg, 1.0)
+        rgb = cv2.warpAffine(rgb_orig, M, (224, 224), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        depth = cv2.warpAffine(depth_orig, M, (224, 224), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        aff_gt = cv2.warpAffine(aff_gt_orig, M, (224, 224), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    else:
+        rgb = rgb_orig
+        depth = depth_orig
+        aff_gt = aff_gt_orig
+
+    rgbd_rotated = np.concatenate([rgb.transpose(2, 0, 1), depth[np.newaxis, :, :]], axis=0)
+    x = torch.from_numpy(rgbd_rotated).float().unsqueeze(0).to(DEVICE)
 
     t0 = time.perf_counter()
     with torch.no_grad():
-        if model_type.lower() == "baseline":
+        if model_type.lower() in ["baseline", "conventional"]:
             out = BASELINE_MODEL(x)
             q_map_tensor = out["quality"][0, 0]
             aff_pred = None
@@ -295,7 +310,8 @@ def run_inference_core(
 
     img_bytes = None
     if generate_image:
-        title_label = f"{tool_type.upper()} | Model: {model_type.upper()} (α={affordance_weight:.2f})"
+        model_name = "Conventional Model" if model_type.lower() in ["baseline", "conventional"] else "TAG-Net (AGAM)"
+        title_label = f"{tool_type.upper()} ({orientation_deg:+.0f}°) | {model_name}"
         img_bytes, is_safe = generate_visualization_bytes(rgb, grasp, aff_gt, q_map_np, aff_pred, title=title_label)
 
     grasp_data = None
@@ -313,18 +329,22 @@ def run_inference_core(
     image_url = (
         f"/visualization.png?tool_type={tool_type}&sample_idx={sample_idx}&model_type={model_type}"
         f"&task_mode={task_mode}&affordance_weight={affordance_weight}&quality_threshold={quality_threshold}"
+        f"&orientation_deg={orientation_deg}"
     )
 
     result = {
         "success": bool(grasp is not None),
         "tool_type": tool_type,
         "sample_idx": sample_idx,
+        "model_type": "conventional" if model_type.lower() in ["baseline", "conventional"] else "tag_net",
+        "orientation_deg": orientation_deg,
         "features_applied": {
             "task_mode": task_mode,
             "affordance_weight_alpha": affordance_weight,
             "model_type": model_type,
             "quality_threshold": quality_threshold,
-            "max_gripper_width": max_gripper_width
+            "max_gripper_width": max_gripper_width,
+            "orientation_deg": orientation_deg
         },
         "grasp": grasp_data,
         "safety_evaluation": {
@@ -358,6 +378,7 @@ def predict_grasp(req: GraspRequest):
         affordance_weight=req.affordance_weight,
         quality_threshold=req.quality_threshold,
         max_gripper_width=req.max_gripper_width,
+        orientation_deg=req.orientation_deg,
         generate_image=False
     )
     return data
@@ -373,6 +394,7 @@ def get_visualization_image(
     affordance_weight: float = Query(1.0),
     quality_threshold: float = Query(0.05),
     max_gripper_width: float = Query(50.0),
+    orientation_deg: float = Query(0.0),
     t: str = Query(None)
 ):
     """
@@ -388,6 +410,7 @@ def get_visualization_image(
         affordance_weight=affordance_weight,
         quality_threshold=quality_threshold,
         max_gripper_width=max_gripper_width,
+        orientation_deg=orientation_deg,
         generate_image=True
     )
     return Response(
@@ -415,6 +438,8 @@ def get_latest_visualization():
 def get_simulation_stream(
     tool_type: str = Query("knife"),
     task_mode: str = Query("handover"),
+    model_type: str = Query("tag_net"),
+    orientation_deg: float = Query(0.0),
     width: int = Query(640),
     height: int = Query(480),
     fps: int = Query(25)
@@ -425,7 +450,15 @@ def get_simulation_stream(
     modulated by TAG-Net AGAM heatmapping directly into HTML <img> elements.
     """
     return StreamingResponse(
-        generate_simulation_stream(tool_name=tool_type, task_name=task_mode, width=width, height=height, fps=fps),
+        generate_simulation_stream(
+            tool_name=tool_type,
+            task_name=task_mode,
+            model_type=model_type,
+            orientation_deg=orientation_deg,
+            width=width,
+            height=height,
+            fps=fps
+        ),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
@@ -433,7 +466,9 @@ def get_simulation_stream(
 @app.post("/simulation/launch")
 def launch_desktop_simulation(
     tool_type: str = Query("knife"),
-    task_mode: str = Query("handover")
+    task_mode: str = Query("handover"),
+    model_type: str = Query("tag_net"),
+    orientation_deg: float = Query(0.0)
 ):
     """
     Spawns the native 60 FPS interactive desktop OpenGL MuJoCo window
@@ -444,27 +479,40 @@ def launch_desktop_simulation(
     norm_task = "handover" if task_mode.lower() in ["handover", "safe_handover", "human_hand"] else (
         "work_with_it" if task_mode.lower() in ["work", "tool_use", "work_with_it"] else "pick_and_place"
     )
-    cmd = [sys.executable, os.path.join(ROOT_DIR, "simulation", "realtime_mujoco_simulation.py"), "--tool", norm_tool, "--task", norm_task]
+    cmd = [
+        sys.executable,
+        os.path.join(ROOT_DIR, "simulation", "realtime_mujoco_simulation.py"),
+        "--tool", norm_tool,
+        "--task", norm_task,
+        "--model", model_type,
+        "--orientation", str(orientation_deg)
+    ]
     subprocess.Popen(cmd, cwd=ROOT_DIR)
-    return {"status": "launched", "tool": norm_tool, "task": norm_task}
+    return {"status": "launched", "tool": norm_tool, "task": norm_task, "model": model_type, "orientation": orientation_deg}
 
 
 @app.get("/simulation/telemetry")
 def get_simulation_telemetry(
     tool_type: str = Query("knife"),
-    task_mode: str = Query("handover")
+    task_mode: str = Query("handover"),
+    model_type: str = Query("tag_net"),
+    orientation_deg: float = Query(0.0)
 ):
     """Returns AGAM affordance coordinates, 3D target coordinates, and kinematic safety metrics."""
-    pred = get_agam_task_grasp(tool_type, task_mode)
+    pred = get_agam_task_grasp(tool_type, task_mode, model_type=model_type, orientation_deg=orientation_deg)
     return {
         "tool": pred["tool"],
         "task": pred["task"],
+        "model_type": pred["model_type"],
+        "orientation_deg": pred["orientation_deg"],
         "heatmap_u": pred["u"],
         "heatmap_v": pred["v"],
         "confidence_score": round(pred["score"], 4),
         "grasp_angle_deg": round(pred["angle_deg"], 2),
-        "target_cartesian_xyz": pred["target_xyz"],
-        "is_safe": pred["is_safe"]
+        "target_cartesian_xyz": [round(c, 4) for c in pred["target_xyz"]],
+        "is_safe": pred["is_safe"],
+        "contact_label": pred["contact_label"],
+        "verdict": "SAFE AFFORDANCE [PASS]" if pred["is_safe"] else "HAZARD ZONE DETECTED [FAIL]"
     }
 
 

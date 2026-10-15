@@ -39,7 +39,16 @@ if __name__ == "__main__":
                         help="Target tool to manipulate")
     parser.add_argument("--task", type=str, default="handover", choices=["pick_and_place", "handover", "work_with_it"],
                         help="Task execution intention")
+    parser.add_argument("--model", type=str, default="tag_net", choices=["tag_net", "baseline", "conventional"],
+                        help="Model architecture: tag_net or baseline/conventional")
+    parser.add_argument("--orientation", type=float, default=0.0,
+                        help="Object table orientation angle in degrees (0 to 360)")
     args = parser.parse_args()
 
     chosen_tool = "screwdriver" if args.tool.lower() == "tool" else args.tool.lower()
-    launch_task_simulation_desktop(chosen_tool, args.task)
+    launch_task_simulation_desktop(
+        chosen_tool,
+        args.task,
+        model_type=args.model,
+        orientation_deg=args.orientation
+    )
