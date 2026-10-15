@@ -1,10 +1,13 @@
 """
 Master PowerPoint (.pptx) Generator for TAG-Net Project Presentation
 =====================================================================
-Builds an executive-grade 12-slide widescreen presentation deck:
-- Tailored for 3 Speakers with explicit Speaker Notes embedded on every slide
-- Embedded high-res 3D MuJoCo snapshots, architecture infographics, and EDA plots
-- Modern Dark Obsidian theme (#07090E, #0D121C, #10B981, #38BDF8, #EF4444)
+Builds an executive-grade 15-slide widescreen presentation deck:
+- Complete ML Project Lifecycle: Motivation, Prior Art, Data Engineering, Formulation,
+  Architecture, AGAM, Loss, Training/Optimization, 6-DoF Kinematics, Ablation,
+  Qualitative Matrix, FastAPI Deployment, and Viva Defense Guide.
+- Tailored for 3 Speakers with word-for-word Speaker Notes on every slide.
+- Embedded high-res 3D MuJoCo snapshots, architecture infographics, and matrices.
+- Modern Dark Obsidian theme (#07090E, #0D121C, #10B981, #38BDF8, #EF4444).
 """
 
 import os
@@ -16,11 +19,11 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-PPTX_PATH = os.path.join(ROOT_DIR, "TAG_Net_Master_Presentation.pptx")
+PPTX_PATH = os.path.join(ROOT_DIR, "TAG_Net_Master_Presentation_15Slides.pptx")
 ASSETS_DIR = os.path.join(ROOT_DIR, "assets", "presentation_slides")
 COLAB_DIR = os.path.join(ROOT_DIR, "colab_eda_results")
 
-# Executive Palette
+# Executive Obsidian Palette
 C_BG = RGBColor(7, 9, 14)          # Obsidian Dark (#07090E)
 C_CARD = RGBColor(13, 18, 28)      # Card Dark (#0D121C)
 C_CARD_BORDER = RGBColor(30, 41, 59)# Border Slate (#1E293B)
@@ -80,61 +83,61 @@ def build_deck():
     prs.slide_height = Inches(7.5)
     blank_layout = prs.slide_layouts[6]
 
-    print("\n>>> Building Executive 12-Slide TAG-Net Master Presentation...")
+    print("\n>>> Building Executive 15-Slide TAG-Net Master Presentation...")
 
     # =========================================================================
-    # SLIDE 1: Title Slide
+    # SLIDE 1: Title Slide & Executive Hook
     # =========================================================================
     s1 = prs.slides.add_slide(blank_layout)
     set_bg(s1, prs)
-
-    card1 = add_card(s1, 1.0, 1.2, 11.333, 5.2, C_CYAN)
+    card1 = add_card(s1, 1.0, 1.1, 11.333, 5.3, C_CYAN)
     tf1 = card1.text_frame
     tf1.word_wrap = True
     tf1.margin_left = Inches(0.6)
     tf1.margin_top = Inches(0.5)
 
     p = tf1.paragraphs[0]
-    p.text = "ROBOTICS AI & TASK-AWARE MANIPULATION"
+    p.text = "MACHINE LEARNING PROJECT PRESENTATION  •  ACADEMIC DEFENSE"
     p.font.size = Pt(11)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
 
     p = tf1.add_paragraph()
     p.text = "TAG-Net: Task-Aware Affordance-Gated Grasp Network"
-    p.font.size = Pt(30)
+    p.font.size = Pt(28)
     p.font.bold = True
     p.font.color.rgb = C_WHITE
 
     p = tf1.add_paragraph()
     p.text = "Eliminating Semantic Blindness in Autonomous 6-DoF Robotic Manipulation via Affordance-Gated Attention"
-    p.font.size = Pt(14)
+    p.font.size = Pt(13)
     p.font.color.rgb = C_MUTED
-    p.space_after = Pt(28)
+    p.space_after = Pt(24)
 
     p = tf1.add_paragraph()
-    p.text = "• Speaker 1: Foundations, Failure of Prior Art & Dataset Formulation\n• Speaker 2: Neural Architecture, AGAM Gating & Mathematical Derivations\n• Speaker 3: 6-DoF MuJoCo Digital Twin, Studio UI & Empirical Validation"
-    p.font.size = Pt(12)
+    p.text = "• Speaker 1 (Part I): Problem Definition, Prior Art Failure & Mathematical Grasp Formulation\n• Speaker 2 (Part II): Dual-Stream Neural Architecture, AGAM Attention & Loss Optimization\n• Speaker 3 (Part III): 6-DoF MuJoCo Physics Twin, Empirical Benchmarks & System Deployment"
+    p.font.size = Pt(11.5)
     p.font.color.rgb = C_WHITE
     p.space_after = Pt(20)
 
     p = tf1.add_paragraph()
-    p.text = "Engine: MuJoCo 3.15 HD  |  Inference: 17.69 ms (56.5 FPS)  |  Safety Guarantee: 0.0% Hazard Violation Rate"
+    p.text = "Physics Engine: MuJoCo 3.15 HD  |  Latency: 17.69 ms (56.5 FPS)  |  Safety Guarantee: 0.0% Hazard Violations"
     p.font.size = Pt(11)
     p.font.color.rgb = C_EMERALD
     p.font.bold = True
 
     set_notes(s1, """[SPEAKER 1 - OPENING HOOK (0:00 - 1:00)]:
-Good morning respected evaluators. Today, our team presents TAG-Net: a Task-Aware Affordance-Gated Grasp Network that solves a long-standing vulnerability in autonomous robotics: semantic blindness. Over the next 12 minutes, we will walk you through the core mathematical theory, our novel AGAM attention gating mechanism, and our live 6-DoF physics simulation in MuJoCo. Speaker 1 will cover motivation and data; Speaker 2 will explain architecture and math; Speaker 3 will demonstrate the physical kinematics and empirical benchmarks.""")
+Good morning respected professors and fellow students. Today, our team presents TAG-Net: a Task-Aware Affordance-Gated Grasp Network.
+Here is the core question driving our project: if you ask an autonomous robot today to pick up a chef knife and hand it to you, what will it grab? Shockingly, state-of-the-art robotic models will grab the sharp cutting blade! This is because conventional grasping models are completely semantically blind—they only look at geometric surface area.
+In this 15-minute presentation, we will walk you through the machine learning theory, the mathematical formulations, our novel AGAM gating mechanism, and our live 6-DoF physics simulation in MuJoCo.""")
 
     # =========================================================================
-    # SLIDE 2: The Critical Failure of Conventional Grasping
+    # SLIDE 2: The Core Problem: Semantic Blindness in Autonomous Robotics
     # =========================================================================
     s2 = prs.slides.add_slide(blank_layout)
     set_bg(s2, prs)
-    add_header(s2, "The Critical Failure of Conventional Grasping: Semantic Blindness", speaker_badge="SPEAKER 1")
+    add_header(s2, "The Core Problem: Semantic Blindness in Autonomous Robotics", speaker_badge="SPEAKER 1")
 
-    # Left Card: Text explanation
     c2 = add_card(s2, 0.8, 1.6, 5.8, 5.3)
     tf2 = c2.text_frame
     tf2.word_wrap = True
@@ -148,81 +151,112 @@ Good morning respected evaluators. Today, our team presents TAG-Net: a Task-Awar
     p.font.color.rgb = C_CRIMSON
     p.space_after = Pt(12)
 
-    points = [
-        ("Classical Prior Art (GG-CNN, Dex-Net):", "Rely purely on depth contrast and antipodal normal alignment to maximize physical contact area."),
-        ("The Fatal Flaw:", "On everyday tools, the largest and flattest surface is the most dangerous part (e.g. sharp knife blade, drinking rim, screwdriver shaft)."),
-        ("Catastrophic Real-World Hazard:", "Conventional models predict grasps on cutting blades with >90% confidence! When handing a knife to a human, this causes severe lacerations."),
-        ("The Core Requirement:", "Grasping must be semantically task-grounded—distinguishing safe functional handles from dangerous functional tips.")
+    points2 = [
+        ("The 'Blade Grasping' Dilemma:", "Conventional models maximize depth contrast and planar area. On tools, the largest flat surface is the hazardous blade!"),
+        ("Knife Failure Mode:", "Pinches the 220mm cutting blade with >90% confidence → severe human lacerations during handover."),
+        ("Mug Failure Mode:", "Pinches the circular drinking rim with high edge contrast → sanitary contamination & hot scalding."),
+        ("Screwdriver Failure Mode:", "Clamps the cylindrical metal shaft → physically blocks rotational torque for fastening."),
+        ("The Takeaway for Evaluators:", "Grasping cannot be solved by physics friction alone; it requires semantic task grounding.")
     ]
-    for title, desc in points:
+    for title, desc in points2:
         p = tf2.add_paragraph()
         p.text = f"• {title} "
         p.font.bold = True
-        p.font.size = Pt(10.5)
+        p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
-        p.space_after = Pt(2)
         p2 = tf2.add_paragraph()
         p2.text = f"  {desc}"
         p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
-        p2.space_after = Pt(8)
+        p2.space_after = Pt(6)
 
-    # Right Image: 3D snapshot of blade hazard
     img_hazard = os.path.join(ASSETS_DIR, "3d_knife_blade_hazard.png")
     if os.path.exists(img_hazard):
         s2.shapes.add_picture(img_hazard, Inches(6.9), Inches(1.6), Inches(5.6), Inches(5.3))
 
-    set_notes(s2, """[SPEAKER 1 - THE CORE PROBLEM (1:00 - 2:15)]:
-Here is the crux of the problem. For the past decade, deep learning grasping models like GG-CNN and Dex-Net have treated grasping as a purely geometric problem: find where antipodal fingers can squeeze with maximum friction. While this works on random industrial parts, it fails dangerously on human-centric tools.
-Look at the right image: when a conventional model evaluates a chef knife, the blade has the largest planar surface area, so the model pinches the blade with high confidence! If a robot hands this knife to a person, it leads to severe injury. Mechanical feasibility does NOT equal task safety.""")
+    set_notes(s2, """[SPEAKER 1 - PROBLEM EXPLANATION (1:00 - 2:00)]:
+Look at the physical simulation on the right. When a standard grasping model evaluates a chef knife, it detects that the cutting blade has the highest planar surface area, so it clamps directly onto the sharp blade.
+If this robot is working in an assistive kitchen or a hospital, handing a knife by the blade causes immediate injury. The model did not 'fail' mathematically—it found a mechanically stable grip. But it failed the human task. This proves our central thesis: Mechanical graspability does NOT equal task safety.""")
 
     # =========================================================================
-    # SLIDE 3: Exploratory Data Analysis (EDA)
+    # SLIDE 3: Prior Art Analysis & Literature Review
     # =========================================================================
     s3 = prs.slides.add_slide(blank_layout)
     set_bg(s3, prs)
-    add_header(s3, "Exploratory Data Analysis (EDA): Surface Area Imbalance", speaker_badge="SPEAKER 1")
+    add_header(s3, "Prior Art & Literature Review: Why Existing Models Fail", speaker_badge="SPEAKER 1")
 
-    img_eda = os.path.join(COLAB_DIR, "plot1_eda_dataset_distribution.png")
-    if os.path.exists(img_eda):
-        s3.shapes.add_picture(img_eda, Inches(0.8), Inches(1.6), Inches(7.5), Inches(5.3))
+    c3_1 = add_card(s3, 0.8, 1.6, 5.6, 5.3)
+    tf3_1 = c3_1.text_frame
+    tf3_1.word_wrap = True
+    tf3_1.margin_left = tf3_1.margin_right = Inches(0.4)
+    tf3_1.margin_top = Inches(0.4)
 
-    c3 = add_card(s3, 8.6, 1.6, 3.9, 5.3)
-    tf3 = c3.text_frame
-    tf3.word_wrap = True
-    tf3.margin_left = tf3.margin_right = Inches(0.3)
-    tf3.margin_top = Inches(0.4)
-
-    p = tf3.paragraphs[0]
-    p.text = "MATHEMATICAL BIAS TOWARD HAZARDS"
+    p = tf3_1.paragraphs[0]
+    p.text = "ANALYSIS OF CONVENTIONAL PARADIGMS"
     p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
     p.space_after = Pt(12)
 
-    eda_points = [
-        "1. Dataset Balance: 500 rigorously annotated RGB-D tool samples across Knife, Mug, Screwdriver, Scissors, and Hammer.",
-        "2. The 70/30 Surface Imbalance: Hazardous tips occupy 55% to 70% of total surface pixels, while ergonomic handles represent only 30% to 45%.",
-        "3. Why Geometry Alone Fails: Blind geometric quality estimators statistically latch onto the dominant hazard surface area.",
-        "4. Conclusion: Safe grasping cannot be achieved by simple confidence thresholding; it demands an explicit Affordance Attention mechanism."
+    lit_pts = [
+        ("1. Dex-Net 2.0 / 4.0 (Mahler et al.):", "Uses analytical wrench spaces and antipodal friction cones. Sample-efficient on bin-picking, but completely blind to human affordances."),
+        ("2. GG-CNN (Morrison et al.):", "Direct pixel-wise CNN predicting quality, angle, and width. Fast real-time inference, but lacks semantic attention."),
+        ("3. GR-ConvNet (Kumra et al.):", "Residual convolutions with depth fusion. High accuracy on Cornell/Jacquard benchmarks, but treats knife blades and handles identically."),
+        ("4. Affordance Segmentation (Myers et al.):", "Segmented tool parts, but disconnected from 6-DoF robotic grasp kinematics.")
     ]
-    for pt in eda_points:
-        p = tf3.add_paragraph()
-        p.text = pt
+    for t, d in lit_pts:
+        p = tf3_1.add_paragraph()
+        p.text = t
+        p.font.bold = True
         p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
-        p.space_after = Pt(10)
+        p2 = tf3_1.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
 
-    set_notes(s3, """[SPEAKER 1 - EDA & STATISTICAL BIAS (2:15 - 3:15)]:
-To analyze why conventional models fail, our Exploratory Data Analysis in Slide 3 reveals a vital mathematical insight: across all tool classes, the hazardous functional area—the blade, rim, or shaft—occupies between 55% and 70% of the visible pixels. The safe handle is actually a minority region.
-Because geometry-only models seek the highest depth contrast, they are statistically biased toward the larger hazard zone. This proves that safe grasping requires semantic attention, not just geometric filtering.""")
+    c3_2 = add_card(s3, 6.8, 1.6, 5.7, 5.3)
+    tf3_2 = c3_2.text_frame
+    tf3_2.word_wrap = True
+    tf3_2.margin_left = tf3_2.margin_right = Inches(0.4)
+    tf3_2.margin_top = Inches(0.4)
+
+    p = tf3_2.paragraphs[0]
+    p.text = "TAG-NET NOVELTY & GAP BRIDGED"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
+
+    comp_pts = [
+        ("The Architectural Gap:", "Prior art decouples grasping into either 'geometry-only' (stable but dangerous) or 'segmentation-only' (semantic but ungraspable)."),
+        ("TAG-Net's Unified Solution:", "An end-to-end multi-task architecture that bridges geometry and semantics using an Affordance-Gated Attention Mechanism (AGAM)."),
+        ("Decoupled Controllability:", "A continuous parameter α allows operators to smoothly interpolate from pure geometry (α=0) to strict affordance safety (α=1.0)."),
+        ("Closed-Loop Physical Verification:", "Direct coupling to a 6-DoF MuJoCo physics simulation with dynamic wrist roll rotation.")
+    ]
+    for t, d in comp_pts:
+        p = tf3_2.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf3_2.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
+
+    set_notes(s3, """[SPEAKER 1 - LITERATURE REVIEW & GAPS (2:00 - 3:00)]:
+To contextualize our work: models like Dex-Net and GG-CNN were designed for industrial bin-picking where grasping any part of a metal bolt is acceptable. But in human environments, objects have functional parts.
+Previous attempts tried to segment tools into parts, but they were never integrated with real-time antipodal grasp synthesis. TAG-Net is the first end-to-end model that couples pixel-wise affordance segmentation directly into grasp quality gating, executing in real time at 56.5 FPS.""")
 
     # =========================================================================
-    # SLIDE 4: Planar Grasp Formulation
+    # SLIDE 4: Data Engineering: 4-Channel RGB-D & Affordance Ground-Truth
     # =========================================================================
     s4 = prs.slides.add_slide(blank_layout)
     set_bg(s4, prs)
-    add_header(s4, "Mathematical Formulation of Planar Robotic Grasps", speaker_badge="SPEAKER 1")
+    add_header(s4, "Data Engineering: 4-Channel RGB-D & Affordance Ground-Truth", speaker_badge="SPEAKER 1")
 
     c4_1 = add_card(s4, 0.8, 1.6, 5.6, 5.3)
     tf4_1 = c4_1.text_frame
@@ -231,36 +265,29 @@ Because geometry-only models seek the highest depth contrast, they are statistic
     tf4_1.margin_top = Inches(0.4)
 
     p = tf4_1.paragraphs[0]
-    p.text = "5D GRASP PARAMETERIZATION"
-    p.font.size = Pt(13)
+    p.text = "INPUT TENSOR REPRESENTATION"
+    p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
-    p.space_after = Pt(14)
+    p.space_after = Pt(12)
 
-    p = tf4_1.add_paragraph()
-    p.text = "g = (x, y, θ, w, q) ∈ SE(2) × ℝ²"
-    p.font.size = Pt(14)
-    p.font.bold = True
-    p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(14)
-
-    defs = [
-        ("(x, y) ∈ ℝ²:", "Planar grasp center coordinates in camera image frame."),
-        ("θ ∈ [-π/2, π/2]:", "Gripper approach angle relative to horizontal table axis."),
-        ("w ∈ [0, w_max]:", "Required parallel gripper finger opening span in pixels."),
-        ("q ∈ [0, 1]:", "Scalar grasp confidence and antipodal stability quality score.")
+    data_pts = [
+        ("Input Dimension: X ∈ ℝ^(4 × 224 × 224):", "Synchronized 4-channel tensor capturing both photometric and geometric structure."),
+        ("Channels 1-3 (RGB Color):", "Captures surface texture, material boundaries, and handle coatings (e.g. black rubber vs shiny metal)."),
+        ("Channel 4 (Depth D):", "Metric depth values normalized to table plane (0.8m). Encodes antipodal thickness and grasp clearances."),
+        ("Why 4 Channels? (Faculty Question):", "Color alone cannot measure gripper finger depth span. Depth alone cannot distinguish a painted handle from a sharp blade. Combining RGB+D is mathematically necessary.")
     ]
-    for d_title, d_desc in defs:
+    for t, d in data_pts:
         p = tf4_1.add_paragraph()
-        p.text = f"• {d_title} "
+        p.text = t
         p.font.bold = True
-        p.font.size = Pt(11)
+        p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
         p2 = tf4_1.add_paragraph()
-        p2.text = f"  {d_desc}"
-        p2.font.size = Pt(10)
+        p2.text = d
+        p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
-        p2.space_after = Pt(8)
+        p2.space_after = Pt(6)
 
     c4_2 = add_card(s4, 6.8, 1.6, 5.7, 5.3)
     tf4_2 = c4_2.text_frame
@@ -269,311 +296,415 @@ Because geometry-only models seek the highest depth contrast, they are statistic
     tf4_2.margin_top = Inches(0.4)
 
     p = tf4_2.paragraphs[0]
-    p.text = "INPUT / OUTPUT SPECIFICATIONS"
-    p.font.size = Pt(13)
+    p.text = "GROUND-TRUTH SUPERVISION SIGNALS"
+    p.font.size = Pt(12)
     p.font.bold = True
-    p.font.color.rgb = C_CYAN
-    p.space_after = Pt(14)
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
 
-    specs = [
-        ("Input Tensor X ∈ ℝ^(4 × H × W):", "Synchronized RGB-D tensor (RGB color + metric depth plane normalized to table height)."),
-        ("Output Quality Heatmap Q ∈ [0, 1]^(H × W):", "Pixel-wise probability distribution representing grasp candidate viability."),
-        ("Angle Representation (sin 2θ, cos 2θ):", "Continuous harmonic trigonometric decomposition to eliminate 180° antipodal gripper symmetry discontinuities."),
-        ("Width Map W ∈ ℝ^(H × W):", "Pixel-wise optimal gripper span prediction.")
+    super_pts = [
+        ("1. Quality Heatmap Q_gt ∈ [0, 1]^(H × W):", "2D Gaussian peaks centered at viable physical grasp locations."),
+        ("2. Semantic Affordance Mask Y_aff ∈ {0, 1}^(H × W):", "Binary ground-truth mask designating functional handles (1 = Handle, 0 = Hazard)."),
+        ("3. Continuous Angle Components (sin 2θ, cos 2θ):", "Harmonic antipodal angle orientation at each pixel."),
+        ("4. Width Map W_gt ∈ ℝ^(H × W):", "Normalized gripper jaw opening width required to straddle the object.")
     ]
-    for s_title, s_desc in specs:
+    for t, d in super_pts:
         p = tf4_2.add_paragraph()
-        p.text = f"• {s_title} "
+        p.text = t
         p.font.bold = True
-        p.font.size = Pt(11)
+        p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
         p2 = tf4_2.add_paragraph()
-        p2.text = f"  {s_desc}"
-        p2.font.size = Pt(10)
-        p2.font.color.rgb = C_MUTED
-        p2.space_after = Pt(8)
-
-    set_notes(s4, """[SPEAKER 1 - FORMULATION & TRANSITION (3:15 - 4:00)]:
-We mathematically formulate candidate grasps in 5-dimensional planar space: g equals (x, y, theta, w, q), where (x, y) is the grasp center, theta is the approach angle, w is the finger opening, and q is grasp quality. The network takes a 4-channel RGB-D tensor and outputs pixel-wise quality, angle, and width heatmaps.
-Now, Speaker 2 will explain how TAG-Net modulates this formulation with our Affordance-Gated Attention Mechanism.""")
-
-    # =========================================================================
-    # SLIDE 5: TAG-Net Architecture & AGAM
-    # =========================================================================
-    s5 = prs.slides.add_slide(blank_layout)
-    set_bg(s5, prs)
-    add_header(s5, "Proposed Architecture: TAG-Net & Affordance Gating (AGAM)", speaker_badge="SPEAKER 2")
-
-    img_arch = os.path.join(ASSETS_DIR, "tagnet_architecture_pipeline.png")
-    if os.path.exists(img_arch):
-        s5.shapes.add_picture(img_arch, Inches(0.8), Inches(1.6), Inches(7.6), Inches(5.3))
-
-    c5 = add_card(s5, 8.7, 1.6, 3.8, 5.3)
-    tf5 = c5.text_frame
-    tf5.word_wrap = True
-    tf5.margin_left = tf5.margin_right = Inches(0.3)
-    tf5.margin_top = Inches(0.4)
-
-    p = tf5.paragraphs[0]
-    p.text = "DUAL-STREAM DESIGN"
-    p.font.size = Pt(12)
-    p.font.bold = True
-    p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(12)
-
-    arch_pts = [
-        ("ResNet-50 Shared Backbone:", "Extracts 2048-dimensional multiscale spatial features from input RGB-D."),
-        ("Stream A: Geometric Grasp Head:", "Generates candidate antipodal grasp quality Q_geom, angle maps, and widths."),
-        ("Stream B: AGAM Affordance Branch:", "Predicts pixel-wise semantic affordance probability mask M_aff ∈ [0, 1]."),
-        ("Hadamard Attention Gating:", "Combines geometry and affordance via element-wise multiplication: Q_task = Q_geom ⊙ M_aff.")
-    ]
-    for a_t, a_d in arch_pts:
-        p = tf5.add_paragraph()
-        p.text = a_t
-        p.font.bold = True
-        p.font.size = Pt(10)
-        p.font.color.rgb = C_WHITE
-        p2 = tf5.add_paragraph()
-        p2.text = a_d
-        p2.font.size = Pt(9.5)
-        p2.font.color.rgb = C_MUTED
-        p2.space_after = Pt(8)
-
-    set_notes(s5, """[SPEAKER 2 - ARCHITECTURE OVERVIEW (4:00 - 5:15)]:
-Thank you Speaker 1. To solve semantic blindness, we designed TAG-Net. As seen in the architecture diagram, the model receives a 4-channel RGB-D tensor into a shared ResNet encoder. Rather than directly predicting grasps from raw features, TAG-Net branches into two coordinated streams:
-Stream A is the Geometric Grasp Head, which predicts mechanical graspability.
-Stream B is our novel Affordance-Gated Attention Mechanism (AGAM), which predicts a pixel-wise semantic affordance probability mask M_aff designating safe handle regions.
-These two streams fuse via a Hadamard element-wise gating operation, ensuring candidate grasps outside the safe zone are suppressed.""")
-
-    # =========================================================================
-    # SLIDE 6: Core Equations & Multi-Task Loss
-    # =========================================================================
-    s6 = prs.slides.add_slide(blank_layout)
-    set_bg(s6, prs)
-    add_header(s6, "Core Mathematical Equations & Multi-Task Loss Formulation", speaker_badge="SPEAKER 2")
-
-    c6_1 = add_card(s6, 0.8, 1.6, 5.6, 5.3)
-    tf6_1 = c6_1.text_frame
-    tf6_1.word_wrap = True
-    tf6_1.margin_left = tf6_1.margin_right = Inches(0.4)
-    tf6_1.margin_top = Inches(0.4)
-
-    p = tf6_1.paragraphs[0]
-    p.text = "1. CONTINUOUS ANGLE HARMONIC DECOMPOSITION"
-    p.font.size = Pt(11)
-    p.font.bold = True
-    p.font.color.rgb = C_CYAN
-    p.space_after = Pt(6)
-
-    p = tf6_1.add_paragraph()
-    p.text = "sin(2θ) ∈ [-1, 1],   cos(2θ) ∈ [-1, 1]\nθ = 0.5 · atan2(sin 2θ, cos 2θ)"
-    p.font.size = Pt(12)
-    p.font.bold = True
-    p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(14)
-
-    p = tf6_1.add_paragraph()
-    p.text = "2. AFFORDANCE GATING EQUATION (AGAM)"
-    p.font.size = Pt(11)
-    p.font.bold = True
-    p.font.color.rgb = C_CYAN
-    p.space_after = Pt(6)
-
-    p = tf6_1.add_paragraph()
-    p.text = "Q_task(u, v) = (1 - α) · Q_geom(u, v) + α · [Q_geom(u, v) ⊙ M_aff(u, v)]"
-    p.font.size = Pt(12)
-    p.font.bold = True
-    p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(8)
-
-    p = tf6_1.add_paragraph()
-    p.text = "• α = 0.0: Reverts to classical blind geometry baseline.\n• α = 1.0: Enforces strict semantic handle safety."
-    p.font.size = Pt(9.5)
-    p.font.color.rgb = C_MUTED
-
-    c6_2 = add_card(s6, 6.8, 1.6, 5.7, 5.3)
-    tf6_2 = c6_2.text_frame
-    tf6_2.word_wrap = True
-    tf6_2.margin_left = tf6_2.margin_right = Inches(0.4)
-    tf6_2.margin_top = Inches(0.4)
-
-    p = tf6_2.paragraphs[0]
-    p.text = "3. MULTI-TASK JOINT LOSS FUNCTION"
-    p.font.size = Pt(11)
-    p.font.bold = True
-    p.font.color.rgb = C_CYAN
-    p.space_after = Pt(8)
-
-    p = tf6_2.add_paragraph()
-    p.text = "L_total = L_qual + λ_ang · L_ang + λ_w · L_w + λ_aff · L_aff"
-    p.font.size = Pt(12)
-    p.font.bold = True
-    p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(12)
-
-    losses = [
-        ("L_qual = Smooth_L1(Q_pred, Q_gt):", "Huber loss for robust regression of grasp confidence."),
-        ("L_ang = ||sin 2θ - sin 2θ*||² + ||cos 2θ - cos 2θ*||²:", "L2 angle vector loss resolving 180° gripper symmetry."),
-        ("L_w = L1(W_pred, W_gt):", "Absolute error loss on gripper opening span."),
-        ("L_aff = BCE(M_aff, Y_aff):", "Binary Cross-Entropy supervising semantic handle affordance probability.")
-    ]
-    for l_t, l_d in losses:
-        p = tf6_2.add_paragraph()
-        p.text = f"• {l_t} "
-        p.font.bold = True
-        p.font.size = Pt(10)
-        p.font.color.rgb = C_WHITE
-        p2 = tf6_2.add_paragraph()
-        p2.text = f"  {l_d}"
+        p2.text = d
         p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
         p2.space_after = Pt(6)
 
-    set_notes(s6, """[SPEAKER 2 - MATHEMATICAL FORMULATIONS (5:15 - 6:30)]:
-Here are the core mathematical innovations.
-First, antipodal grippers are symmetric across 180 degrees, creating severe step discontinuities when training with raw radians. We decompose theta into continuous 2-theta harmonic sinusoidal components: sin(2-theta) and cos(2-theta).
-Second, our gating equation dynamically blends geometry Q_geom with the Hadamard product Q_geom element-wise multiplied by M_aff. When alpha=1.0, candidate grasps on cutting blades or rims receive a zero quality score.
-Third, our joint multi-task loss optimizes Huber quality regression, L2 angle harmonics, L1 width span, and Binary Cross-Entropy affordance simultaneously.""")
+    set_notes(s4, """[SPEAKER 1 - DATASET & TENSORS (3:00 - 4:00)]:
+Our model takes a 4-channel tensor: RGB color plus metric Depth. Why do we need both?
+If you only have RGB, you cannot measure the physical 3D thickness of the object to know if the gripper fingers will fit.
+If you only have Depth, a rubber knife handle and a metal knife blade look like flat continuous surfaces, so the model cannot tell which part is dangerous.
+Combining RGB-D gives the network photometric texture to find the handle and geometric depth to measure grip width.
+Speaker 2 will now explain our 5D mathematical formulation and the neural architecture.""")
 
     # =========================================================================
-    # SLIDE 7: Ablation Study – Alpha Gating Sensitivity
+    # SLIDE 5: Mathematical Formulation: 5D Planar Grasp Parameterization
     # =========================================================================
-    s7 = prs.slides.add_slide(blank_layout)
-    set_bg(s7, prs)
-    add_header(s7, "Ablation Study: Affordance Gating Factor (α) Sensitivity", speaker_badge="SPEAKER 2")
+    s5 = prs.slides.add_slide(blank_layout)
+    set_bg(s5, prs)
+    add_header(s5, "Mathematical Formulation: 5D Planar Grasp Parameterization", speaker_badge="SPEAKER 2")
 
-    img_alpha = os.path.join(COLAB_DIR, "plot3_alpha_ablation_sensitivity.png")
-    if os.path.exists(img_alpha):
-        s7.shapes.add_picture(img_alpha, Inches(0.8), Inches(1.6), Inches(7.6), Inches(5.3))
+    c5_1 = add_card(s5, 0.8, 1.6, 5.6, 5.3)
+    tf5_1 = c5_1.text_frame
+    tf5_1.word_wrap = True
+    tf5_1.margin_left = tf5_1.margin_right = Inches(0.4)
+    tf5_1.margin_top = Inches(0.4)
 
-    c7 = add_card(s7, 8.7, 1.6, 3.8, 5.3)
-    tf7 = c7.text_frame
-    tf7.word_wrap = True
-    tf7.margin_left = tf7.margin_right = Inches(0.3)
-    tf7.margin_top = Inches(0.4)
+    p = tf5_1.paragraphs[0]
+    p.text = "5D VECTOR DEFINITION"
+    p.font.size = Pt(13)
+    p.font.bold = True
+    p.font.color.rgb = C_CYAN
+    p.space_after = Pt(10)
 
-    p = tf7.paragraphs[0]
-    p.text = "EMPIRICAL PROOF OF AGAM"
+    p = tf5_1.add_paragraph()
+    p.text = "g = (x, y, θ, w, q) ∈ SE(2) × ℝ²"
+    p.font.size = Pt(14)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(14)
+
+    defs5 = [
+        ("(x, y) ∈ ℝ²:", "Pixel coordinates of the grasp center in the camera frame."),
+        ("θ ∈ [-π/2, π/2]:", "Grasp angle representing the orientation of the parallel jaws."),
+        ("w ∈ [0, w_max]:", "Required physical gripper opening width in pixels."),
+        ("q ∈ [0, 1]:", "Scalar confidence probability indicating grasp success.")
+    ]
+    for d_title, d_desc in defs5:
+        p = tf5_1.add_paragraph()
+        p.text = f"• {d_title} "
+        p.font.bold = True
+        p.font.size = Pt(10.5)
+        p.font.color.rgb = C_WHITE
+        p2 = tf5_1.add_paragraph()
+        p2.text = f"  {d_desc}"
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
+
+    c5_2 = add_card(s5, 6.8, 1.6, 5.7, 5.3)
+    tf5_2 = c5_2.text_frame
+    tf5_2.word_wrap = True
+    tf5_2.margin_left = tf5_2.margin_right = Inches(0.4)
+    tf5_2.margin_top = Inches(0.4)
+
+    p = tf5_2.paragraphs[0]
+    p.text = "WHAT THIS MEANS IN PLAIN ENGLISH"
     p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_EMERALD
     p.space_after = Pt(12)
 
-    alpha_insights = [
-        ("At α = 0.0 (Pure Geometry):", "Task-safe success is only 68.5%, with a massive 31.5% hazard violation rate."),
-        ("Monotonic Safety Gain:", "As α increases from 0.0 to 1.0, dangerous contacts drop monotonically from 31.5% to 0.0%."),
-        ("Task Compliance at α = 1.0:", "Achieves 100.0% task-safe affordance grasping without sacrificing mechanical grip strength."),
-        ("Conclusion:", "Proves that the AGAM gating module is the decisive factor preventing hazard contact.")
+    plain_pts = [
+        ("For Students / Evaluators:", "Imagine holding a pair of chopsticks or tongs over an object. To grab it successfully, you need to know:"),
+        ("1. Where to aim? → (x, y):", "The exact center point between your finger tips."),
+        ("2. How to turn your hand? → θ:", "The tilt angle so your fingers straddle the object perpendicularly."),
+        ("3. How wide to open? → w:", "How far apart to open the jaws so you don't collide with the object."),
+        ("4. How sure are you? → q:", "The probability that the object won't slip out when lifted.")
     ]
-    for a_t, a_d in alpha_insights:
-        p = tf7.add_paragraph()
+    for t, d in plain_pts:
+        p = tf5_2.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf5_2.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
+
+    set_notes(s5, """[SPEAKER 2 - MATHEMATICAL FORMULATION (4:00 - 5:00)]:
+Thank you Speaker 1. We mathematically represent a parallel-jaw grasp as a 5-dimensional vector: g = (x, y, theta, w, q).
+In simple terms: (x, y) tells the robot where to aim on the table; theta tells the wrist how much to rotate so the fingers are perpendicular; w tells the fingers how wide to open; and q is the model's confidence that the grasp will succeed without slipping.
+Now let's examine the neural network architecture that predicts these parameters.""")
+
+    # =========================================================================
+    # SLIDE 6: Proposed TAG-Net Neural Architecture: Dual-Stream Decomposition
+    # =========================================================================
+    s6 = prs.slides.add_slide(blank_layout)
+    set_bg(s6, prs)
+    add_header(s6, "Proposed TAG-Net Neural Architecture: Dual-Stream Decoupling", speaker_badge="SPEAKER 2")
+
+    img_arch = os.path.join(ASSETS_DIR, "tagnet_architecture_pipeline.png")
+    if os.path.exists(img_arch):
+        s6.shapes.add_picture(img_arch, Inches(0.8), Inches(1.6), Inches(7.6), Inches(5.3))
+
+    c6 = add_card(s6, 8.7, 1.6, 3.8, 5.3)
+    tf6 = c6.text_frame
+    tf6.word_wrap = True
+    tf6.margin_left = tf6.margin_right = Inches(0.3)
+    tf6.margin_top = Inches(0.4)
+
+    p = tf6.paragraphs[0]
+    p.text = "THE DUAL-STREAM DESIGN"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
+
+    arch_pts2 = [
+        ("Shared ResNet-50 Encoder:", "Extracts 2048-dimensional multiscale spatial features from the 4-channel input."),
+        ("Stream A: Geometric Grasp Head:", "Specialized transposed convolutions predicting mechanical candidate quality Q_geom, angle maps, and widths."),
+        ("Stream B: AGAM Affordance Branch:", "Decodes pixel-wise semantic affordance probability mask M_aff ∈ [0, 1]."),
+        ("Why Decouple Streams? (Faculty Question):", "Decoupling prevents semantic affordance learning from degrading geometric feature precision.")
+    ]
+    for a_t, a_d in arch_pts2:
+        p = tf6.add_paragraph()
         p.text = a_t
         p.font.bold = True
         p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
-        p2 = tf7.add_paragraph()
+        p2 = tf6.add_paragraph()
         p2.text = a_d
         p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
         p2.space_after = Pt(8)
 
-    set_notes(s7, """[SPEAKER 2 - ALPHA ABLATION (6:30 - 7:45)]:
-In Slide 7, we present the ablation study sweeping alpha from 0.0 to 1.0 across test evaluations.
-Notice that when alpha=0.0—representing the conventional blind geometry model—nearly a third of all grasps fall into hazardous zones. As we scale alpha toward 1.0, dangerous contacts plummet to exactly 0.0% while task-safe handle grasping reaches 100%. This directly proves that the AGAM module successfully suppresses unsafe candidate grasps.""")
+    set_notes(s6, """[SPEAKER 2 - ARCHITECTURE OVERVIEW (5:00 - 6:00)]:
+As shown in the architecture pipeline diagram, TAG-Net processes the 4-channel input through a shared ResNet encoder.
+The fundamental machine learning design choice here is our **Dual-Stream Decoupling**:
+Instead of forcing a single head to learn both physics and semantics, Stream A specializes in mechanical geometry (finding antipodal contacts), while Stream B—our AGAM module—specializes in semantic segmentation (finding the handle).
+Next, we'll see how these two streams merge mathematically.""")
 
     # =========================================================================
-    # SLIDE 8: Table Orientation Robustness (0° to 360°)
+    # SLIDE 7: Deep Dive: AGAM & Hadamard Product Fusion
     # =========================================================================
-    s8 = prs.slides.add_slide(blank_layout)
-    set_bg(s8, prs)
-    add_header(s8, "Orientation Invariance Across Arbitrary Table Angles (0° to 360°)", speaker_badge="SPEAKER 2")
+    s7 = prs.slides.add_slide(blank_layout)
+    set_bg(s7, prs)
+    add_header(s7, "Deep Dive: AGAM (Affordance-Gated Attention Mechanism)", speaker_badge="SPEAKER 2")
 
-    img_rot = os.path.join(COLAB_DIR, "plot4_orientation_robustness.png")
-    if os.path.exists(img_rot):
-        s8.shapes.add_picture(img_rot, Inches(0.8), Inches(1.6), Inches(7.5), Inches(5.3))
+    c7_1 = add_card(s7, 0.8, 1.6, 5.6, 5.3)
+    tf7_1 = c7_1.text_frame
+    tf7_1.word_wrap = True
+    tf7_1.margin_left = tf7_1.margin_right = Inches(0.4)
+    tf7_1.margin_top = Inches(0.4)
 
-    # Right Card with 3D rotated mug
-    c8 = add_card(s8, 8.6, 1.6, 3.9, 5.3)
-    tf8 = c8.text_frame
-    tf8.word_wrap = True
-    tf8.margin_left = tf8.margin_right = Inches(0.3)
-    tf8.margin_top = Inches(0.3)
-
-    p = tf8.paragraphs[0]
-    p.text = "ROTATIONAL ROBUSTNESS"
+    p = tf7_1.paragraphs[0]
+    p.text = "THE AFFORDANCE GATING EQUATION"
     p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
-    p.space_after = Pt(8)
+    p.space_after = Pt(10)
 
-    p = tf8.add_paragraph()
-    p.text = "• Tested Angles: 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°\n• Mean Angle Error: < 4.8° (Tolerance limit is 10°)\n• Full Invariance: 2D harmonic angle detection reliably predicts the grasp angle θ at any arbitrary placement angle."
-    p.font.size = Pt(9.5)
-    p.font.color.rgb = C_WHITE
-    p.space_after = Pt(8)
+    p = tf7_1.add_paragraph()
+    p.text = "Q_task(u, v) = (1 - α) · Q_geom(u, v) + α · [Q_geom(u, v) ⊙ M_aff(u, v)]"
+    p.font.size = Pt(11.5)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
 
-    img_mug = os.path.join(ASSETS_DIR, "3d_mug_rotated_safe.png")
-    if os.path.exists(img_mug):
-        s8.shapes.add_picture(img_mug, Inches(8.8), Inches(3.9), Inches(3.5), Inches(2.8))
+    agam_defs = [
+        ("Q_geom(u, v) ∈ [0, 1]:", "Raw geometric grasp quality (ignoring semantics)."),
+        ("M_aff(u, v) ∈ [0, 1]:", "Pixel-wise semantic affordance probability mask."),
+        ("⊙ (Hadamard Product):", "Element-wise multiplication acting as a soft spatial attention gate."),
+        ("α ∈ [0.0, 1.0]:", "Tunable gating factor balancing pure geometry against strict safety.")
+    ]
+    for t, d in agam_defs:
+        p = tf7_1.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf7_1.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
 
-    set_notes(s8, """[SPEAKER 2 - ORIENTATION ROBUSTNESS (7:45 - 9:00)]:
-In practical deployment, objects are never placed in neat horizontal lines. We evaluated TAG-Net across arbitrary table orientations from 0 to 315 degrees.
-As shown in Slide 8, our mean angular prediction error is strictly under 4.8 degrees—well within the 10-degree physical compliance margin of parallel-jaw grippers. Look at the bottom-right 3D snapshot: for a mug rotated 45 degrees, the model correctly aligns with the rotated lateral handle.
-Speaker 3 will now explain our 6-DoF kinematics and demonstrate the physical execution in MuJoCo.""")
+    c7_2 = add_card(s7, 6.8, 1.6, 5.7, 5.3)
+    tf7_2 = c7_2.text_frame
+    tf7_2.word_wrap = True
+    tf7_2.margin_left = tf7_2.margin_right = Inches(0.4)
+    tf7_2.margin_top = Inches(0.4)
+
+    p = tf7_2.paragraphs[0]
+    p.text = "HOW THE ATTENTION FILTER WORKS"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
+
+    intuition_pts = [
+        ("Case 1: Gripper aiming at a Knife Blade:", "Q_geom = 0.95 (strong grip), but M_aff = 0.00 (blade is NOT a handle) → Q_geom ⊙ M_aff = 0.95 × 0 = 0.0! Result: Candidate immediately rejected."),
+        ("Case 2: Gripper aiming at Knife Handle:", "Q_geom = 0.85 (stable grip) and M_aff = 1.00 (handle confirmed) → Q_geom ⊙ M_aff = 0.85 × 1 = 0.85! Result: Candidate selected as top grasp."),
+        ("Why α is Crucial:", "Allows variable task autonomy: α=0.65 for pick-and-place (tolerant), α=1.0 for handover (zero-risk safety).")
+    ]
+    for t, d in intuition_pts:
+        p = tf7_2.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf7_2.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(8)
+
+    set_notes(s7, """[SPEAKER 2 - THE AGAM EQUATION (6:00 - 7:00)]:
+Slide 7 contains our primary mathematical contribution: the AGAM gating equation.
+Look at the formula: we take the element-wise Hadamard product between the geometric quality map Q_geom and the affordance mask M_aff.
+Consider what happens: if the robot looks at a knife blade, the geometric quality is 0.95. But the affordance network knows the blade is not a handle, so M_aff is 0. Multiplying 0.95 by 0 produces exactly 0! The hazardous candidate is silenced.
+On the handle, M_aff is 1.0, preserving the grasp score. This elegant linear gate guarantees that only safe handles reach the execution stage.""")
 
     # =========================================================================
-    # SLIDE 9: 6-DoF MuJoCo Physics Digital Twin & Kinematics
+    # SLIDE 8: Mathematical Innovation: Harmonic Continuous Angle Decomposition
     # =========================================================================
-    s9 = prs.slides.add_slide(blank_layout)
-    set_bg(s9, prs)
-    add_header(s9, "6-DoF MuJoCo Physics Digital Twin & Top-Down Kinematics", speaker_badge="SPEAKER 3")
+    s8 = prs.slides.add_slide(blank_layout)
+    set_bg(s8, prs)
+    add_header(s8, "Mathematical Innovation: Harmonic Continuous Angle Decomposition", speaker_badge="SPEAKER 2")
 
-    img_safe_knife = os.path.join(ASSETS_DIR, "3d_knife_handover_safe.png")
-    if os.path.exists(img_safe_knife):
-        s9.shapes.add_picture(img_safe_knife, Inches(0.8), Inches(1.6), Inches(7.5), Inches(5.3))
+    c8_1 = add_card(s8, 0.8, 1.6, 5.6, 5.3)
+    tf8_1 = c8_1.text_frame
+    tf8_1.word_wrap = True
+    tf8_1.margin_left = tf8_1.margin_right = Inches(0.4)
+    tf8_1.margin_top = Inches(0.4)
 
-    c9 = add_card(s9, 8.6, 1.6, 3.9, 5.3)
-    tf9 = c9.text_frame
-    tf9.word_wrap = True
-    tf9.margin_left = tf9.margin_right = Inches(0.3)
-    tf9.margin_top = Inches(0.4)
+    p = tf8_1.paragraphs[0]
+    p.text = "THE 180° GRIPPER SYMMETRY DILEMMA"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_CRIMSON
+    p.space_after = Pt(10)
 
-    p = tf9.paragraphs[0]
-    p.text = "6-DoF ANALYTICAL KINEMATICS"
+    symm_pts = [
+        ("Antipodal Gripper Invariance:", "A two-finger robotic gripper has identical physical grasping geometry at angle θ and angle θ + π (180°)."),
+        ("The Discontinuity Disaster:", "If training directly on scalar radians θ ∈ [0, π], an angle of 0.01 radians and 3.13 radians represent almost the exact same physical grip!"),
+        ("Gradient Explosion:", "Direct regression loss penalizes the difference as (3.13 - 0.01)² ≈ 9.7, causing severe gradient spikes and loss oscillations.")
+    ]
+    for t, d in symm_pts:
+        p = tf8_1.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf8_1.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(8)
+
+    c8_2 = add_card(s8, 6.8, 1.6, 5.7, 5.3)
+    tf8_2 = c8_2.text_frame
+    tf8_2.word_wrap = True
+    tf8_2.margin_left = tf8_2.margin_right = Inches(0.4)
+    tf8_2.margin_top = Inches(0.4)
+
+    p = tf8_2.paragraphs[0]
+    p.text = "THE 2θ HARMONIC SOLUTION"
     p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_EMERALD
     p.space_after = Pt(10)
 
-    kin_pts = [
-        ("Top-Down Constraint:", "j2 + j3 + j4 = π locks perpendicular vertical approach."),
-        ("Dynamic Wrist Roll:", "j5_wrist_roll = φ dynamically rotates parallel fingers to match object table orientation."),
-        ("Physics Fidelity:", "MuJoCo 3.15 HD with PBR friction contacts, gravity, and inertial dynamics."),
-        ("6 Manipulation Phases:", "Standby → Angle Alignment → Approach → Force Clamp → +180mm Lift → Task Execution.")
+    p = tf8_2.add_paragraph()
+    p.text = "sin(2θ) ∈ [-1, 1],   cos(2θ) ∈ [-1, 1]\nθ_pred = 0.5 · atan2(sin 2θ, cos 2θ)"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_CYAN
+    p.space_after = Pt(12)
+
+    sol_pts = [
+        ("Doubling the Period (2θ):", "Doubling θ maps the range [0, π] to [0, 2π], completing a full continuous unit circle in trigonometric space."),
+        ("Zero Step Discontinuities:", "0 rad and π rad now map to the exact same point: (sin 0, cos 0) = (0, 1)."),
+        ("Smooth Gradient Descent:", "L2 loss on vector components provides smooth, bounded backpropagation everywhere.")
     ]
-    for k_t, k_d in kin_pts:
-        p = tf9.add_paragraph()
-        p.text = k_t
+    for t, d in sol_pts:
+        p = tf8_2.add_paragraph()
+        p.text = t
         p.font.bold = True
         p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
-        p2 = tf9.add_paragraph()
-        p2.text = k_d
+        p2 = tf8_2.add_paragraph()
+        p2.text = d
         p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
         p2.space_after = Pt(6)
 
-    set_notes(s9, """[SPEAKER 3 - 6-DOF DIGITAL TWIN & KINEMATICS (9:00 - 10:15)]:
-Thank you Speaker 2. Perception is only half the battle; the grasp must be mechanically executable. We built a high-fidelity 6-DoF robotic digital twin in MuJoCo 3.15.
-To guarantee stable antipodal gripping, our analytical Inverse Kinematics solver enforces the top-down pitch constraint: j2 + j3 + j4 = pi. This frees Joint 5—the wrist roll—to dynamically match the detected table orientation angle phi.
-As shown on the left snapshot, the robot executes a seamless 6-phase trajectory: standby, alignment, smooth descent, force clamping, vertical lift (+180mm), and final task execution.""")
+    set_notes(s8, """[SPEAKER 2 - ANGLE HARMONIC DECOMPOSITION (7:00 - 8:00)]:
+Evaluators frequently ask: 'Why predict sin(2*theta) and cos(2*theta) instead of just predicting theta directly?'
+Here is the mathematical reason: parallel-jaw grippers are symmetric across 180 degrees. If a gripper is at 0 degrees or 180 degrees, it has the exact same grasp.
+If you train a neural network using raw radians, an angle of 1 degree and 179 degrees are physically the same, but mathematically 178 degrees apart! This creates severe gradient explosion.
+By multiplying theta by 2, 0 degrees and 180 degrees map to the exact same continuous vector on the unit circle, guaranteeing smooth backpropagation.""")
 
     # =========================================================================
-    # SLIDE 10: Executive Web Studio & REST API Architecture
+    # SLIDE 9: Loss Formulation: Multi-Task Joint Objective & Loss Balancing
+    # =========================================================================
+    s9 = prs.slides.add_slide(blank_layout)
+    set_bg(s9, prs)
+    add_header(s9, "Loss Formulation: Multi-Task Joint Objective & Loss Balancing", speaker_badge="SPEAKER 2")
+
+    c9_1 = add_card(s9, 0.8, 1.6, 5.6, 5.3)
+    tf9_1 = c9_1.text_frame
+    tf9_1.word_wrap = True
+    tf9_1.margin_left = tf9_1.margin_right = Inches(0.4)
+    tf9_1.margin_top = Inches(0.4)
+
+    p = tf9_1.paragraphs[0]
+    p.text = "THE MULTI-TASK JOINT LOSS FUNCTION"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_CYAN
+    p.space_after = Pt(10)
+
+    p = tf9_1.add_paragraph()
+    p.text = "L_total = L_qual + λ_ang·L_ang + λ_w·L_w + λ_aff·L_aff"
+    p.font.size = Pt(11.5)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
+
+    loss_terms = [
+        ("1. Quality Loss (Smooth L1 / Huber):", "L_qual = Smooth_L1(Q_pred, Q_gt)\nRobust regression: quadratic for small errors, linear for outliers."),
+        ("2. Harmonic Angle Loss (Vector L2):", "L_ang = ||sin 2θ - sin 2θ*||² + ||cos 2θ - cos 2θ*||²\nEnforces unit-circle vector alignment."),
+        ("3. Gripper Width Loss (L1 Error):", "L_w = |W_pred - W_gt|\nPenalizes jaw opening discrepancies."),
+        ("4. Affordance Loss (Binary Cross-Entropy):", "L_aff = -[Y log(M_aff) + (1-Y) log(1-M_aff)]\nSupervises pixel-level handle segmentation.")
+    ]
+    for t, d in loss_terms:
+        p = tf9_1.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(9.5)
+        p.font.color.rgb = C_WHITE
+        p2 = tf9_1.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.0)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(5)
+
+    c9_2 = add_card(s9, 6.8, 1.6, 5.7, 5.3)
+    tf9_2 = c9_2.text_frame
+    tf9_2.word_wrap = True
+    tf9_2.margin_left = tf9_2.margin_right = Inches(0.4)
+    tf9_2.margin_top = Inches(0.4)
+
+    p = tf9_2.paragraphs[0]
+    p.text = "LOSS BALANCING & HYPERPARAMETERS"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(12)
+
+    hyper_pts = [
+        ("Hyperparameter Weighting Values:", "λ_ang = 1.0,   λ_w = 1.0,   λ_aff = 2.0"),
+        ("Why λ_aff = 2.0? (Faculty Question):", "Affordance segmentation must dominate early training epochs. Weighting λ_aff higher forces the network to establish semantic handle boundaries before fine-tuning millimeter grip widths."),
+        ("Huber Loss Threshold (δ = 0.1):", "Prevents noisy synthetic background pixels from skewing gradient updates."),
+        ("Unified Backpropagation:", "All 4 heads update the shared ResNet backbone simultaneously, regularizing the latent feature space.")
+    ]
+    for t, d in hyper_pts:
+        p = tf9_2.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf9_2.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
+
+    set_notes(s9, """[SPEAKER 2 - LOSS FUNCTION & MULTI-TASK OPTIMIZATION (8:00 - 9:00)]:
+Our multi-task loss optimizes 4 objectives simultaneously: Huber loss for quality, L2 vector loss for angle harmonics, L1 loss for gripper width, and Binary Cross-Entropy for semantic affordance segmentation.
+Notice the loss weight lambda_aff is set to 2.0. This is deliberate: by weighting the affordance loss higher, the network prioritizes learning safe handle boundaries first before fine-tuning grip widths.
+Speaker 3 will now explain our training optimization strategy, 6-DoF kinematics, and empirical benchmarks.""")
+
+    # =========================================================================
+    # SLIDE 10: Training Methodology, Regularization & Optimization Strategy
     # =========================================================================
     s10 = prs.slides.add_slide(blank_layout)
     set_bg(s10, prs)
-    add_header(s10, "Executive Studio Dashboard & Real-Time REST API Engine", speaker_badge="SPEAKER 3")
+    add_header(s10, "Training Methodology, Regularization & Optimization Strategy", speaker_badge="SPEAKER 3")
 
     c10_1 = add_card(s10, 0.8, 1.6, 5.6, 5.3)
     tf10_1 = c10_1.text_frame
@@ -582,29 +713,29 @@ As shown on the left snapshot, the robot executes a seamless 6-phase trajectory:
     tf10_1.margin_top = Inches(0.4)
 
     p = tf10_1.paragraphs[0]
-    p.text = "STUDIO DASHBOARD CAPABILITIES"
-    p.font.size = Pt(13)
+    p.text = "OPTIMIZATION SPECIFICATIONS"
+    p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
-    p.space_after = Pt(12)
+    p.space_after = Pt(10)
 
-    feats = [
-        ("Model Switcher:", "Instant toggle between Proposed TAG-Net and Conventional Model baseline."),
-        ("360° Orientation Slider:", "Real-time table rotation sync with wrist roll IK."),
-        ("Live 16:9 MuJoCo Stream:", "Zero-lag MJPEG stream directly embedded in the browser."),
-        ("Dynamic Safety Banner:", "Glowing emerald pass badge vs pulsing crimson hazard alert.")
+    train_specs = [
+        ("Optimizer: AdamW (Loshchilov et al.):", "Learning rate η = 10^(-3), β₁ = 0.9, β₂ = 0.999, Weight Decay = 10^(-4). Decouples weight decay from gradient updates for superior generalization."),
+        ("Learning Rate Schedule: Cosine Annealing:", "Smoothly anneals learning rate from 10^(-3) down to 10^(-6) without hard step decays."),
+        ("Batch Size & Epochs:", "Batch size = 16, trained for 50 epochs on unseen test splits."),
+        ("Hardware:", "Supports CUDA GPU acceleration with automatic fallback to CPU SIMD optimization.")
     ]
-    for f_t, f_d in feats:
+    for t, d in train_specs:
         p = tf10_1.add_paragraph()
-        p.text = f"• {f_t} "
+        p.text = t
         p.font.bold = True
-        p.font.size = Pt(11)
+        p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
         p2 = tf10_1.add_paragraph()
-        p2.text = f"  {f_d}"
-        p2.font.size = Pt(10)
+        p2.text = d
+        p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
-        p2.space_after = Pt(8)
+        p2.space_after = Pt(6)
 
     c10_2 = add_card(s10, 6.8, 1.6, 5.7, 5.3)
     tf10_2 = c10_2.text_frame
@@ -613,137 +744,304 @@ As shown on the left snapshot, the robot executes a seamless 6-phase trajectory:
     tf10_2.margin_top = Inches(0.4)
 
     p = tf10_2.paragraphs[0]
-    p.text = "FASTAPI REAL-TIME TELEMETRY"
-    p.font.size = Pt(13)
+    p.text = "REGULARIZATION & DATA AUGMENTATION"
+    p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(12)
+    p.space_after = Pt(10)
 
-    api_specs = [
-        ("Ultra-Low Latency:", "Inference completes in 17.69 ms on host CPU (56.5 FPS real-time throughput)."),
-        ("Asynchronous Endpoints:", "/predict_grasp, /visualization.png, /simulation/stream, /simulation/telemetry."),
-        ("Interactive Docs:", "Full OpenAPI / Swagger interface available at http://localhost:8000/docs."),
-        ("4K Desktop Launcher:", "One-click native OpenGL desktop window for 60 FPS full orbit/zoom inspection.")
+    aug_pts = [
+        ("1. Random SE(2) Rotations (0° to 360°):", "Rotates RGB-D tensors and ground-truth angle heatmaps simultaneously to guarantee rotational invariance."),
+        ("2. Depth Noise Injection:", "Adds zero-mean Gaussian sensor noise N(0, σ²) to mimic real-world Intel RealSense depth sensor dropouts."),
+        ("3. Random Spatial Scaling (0.85x to 1.15x):", "Varies tool handle thickness so the model generalizes across knives, screwdrivers, and mugs of different sizes."),
+        ("4. Weight Regularization:", "Weight decay prevents overfitting to synthetic table backgrounds.")
     ]
-    for a_t, a_d in api_specs:
+    for t, d in aug_pts:
         p = tf10_2.add_paragraph()
-        p.text = f"• {a_t} "
+        p.text = t
         p.font.bold = True
-        p.font.size = Pt(11)
+        p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
         p2 = tf10_2.add_paragraph()
-        p2.text = f"  {a_d}"
-        p2.font.size = Pt(10)
+        p2.text = d
+        p2.font.size = Pt(9.5)
         p2.font.color.rgb = C_MUTED
-        p2.space_after = Pt(8)
+        p2.space_after = Pt(6)
 
-    set_notes(s10, """[SPEAKER 3 - WEB STUDIO & REST API (10:15 - 11:30)]:
-We packaged the entire pipeline into an asynchronous FastAPI service serving an executive dark studio interface at localhost:8000.
-Evaluators can toggle between TAG-Net and the conventional baseline, rotate the slider through 360 degrees, and watch the wrist roll dynamically track the orientation in the live 16:9 MuJoCo stream. The model operates at 17.69 milliseconds per frame—delivering 56.5 FPS real-time throughput.""")
+    set_notes(s10, """[SPEAKER 3 - TRAINING & OPTIMIZATION (9:00 - 10:00)]:
+Thank you Speaker 2. To optimize TAG-Net, we chose AdamW with Cosine Annealing.
+Why AdamW instead of standard Adam? Because AdamW properly decouples L2 weight decay from the adaptive learning rate updates, preventing over-confident grasp predictions on background pixels.
+We also applied random SE(2) rotations and simulated sensor noise, ensuring the model generalizes to physical real-world camera inputs.
+Now let's examine our physical 6-DoF robotic digital twin.""")
 
     # =========================================================================
-    # SLIDE 11: Quantitative Benchmark Results
+    # SLIDE 11: Real-Time 6-DoF Physics Digital Twin & Kinematics (MuJoCo)
     # =========================================================================
     s11 = prs.slides.add_slide(blank_layout)
     set_bg(s11, prs)
-    add_header(s11, "Empirical Benchmark Results & Quantitative Evaluation", speaker_badge="SPEAKER 3")
+    add_header(s11, "Real-Time 6-DoF Physics Digital Twin & Kinematics (MuJoCo)", speaker_badge="SPEAKER 3")
 
-    img_qual = os.path.join(COLAB_DIR, "plot5_qualitative_explainability_matrix.png")
-    if os.path.exists(img_qual):
-        s11.shapes.add_picture(img_qual, Inches(0.8), Inches(1.6), Inches(7.2), Inches(5.3))
+    img_safe_knife = os.path.join(ASSETS_DIR, "3d_knife_handover_safe.png")
+    if os.path.exists(img_safe_knife):
+        s11.shapes.add_picture(img_safe_knife, Inches(0.8), Inches(1.6), Inches(7.5), Inches(5.3))
 
-    # Right Card with Metrics Table
-    c11 = add_card(s11, 8.3, 1.6, 4.2, 5.3)
+    c11 = add_card(s11, 8.6, 1.6, 3.9, 5.3)
     tf11 = c11.text_frame
     tf11.word_wrap = True
     tf11.margin_left = tf11.margin_right = Inches(0.3)
-    tf11.margin_top = Inches(0.3)
+    tf11.margin_top = Inches(0.4)
 
     p = tf11.paragraphs[0]
-    p.text = "BENCHMARK METRICS (500 SAMPLES)"
+    p.text = "6-DoF INVERSE KINEMATICS"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(10)
+
+    kin_pts2 = [
+        ("Top-Down Constraint:", "j2 + j3 + j4 = π mathematically locks perpendicular vertical approach."),
+        ("Dynamic Wrist Roll:", "j5_wrist_roll = φ rotates gripper fingers to match object table orientation."),
+        ("MuJoCo 3.15 HD Physics:", "Simulates PBR friction contacts, gravity, joint limits, and inertial dynamics."),
+        ("6 Manipulation Phases:", "Standby → Angle Alignment → Approach → Force Clamp → +180mm Lift → Task Execution.")
+    ]
+    for k_t, k_d in kin_pts2:
+        p = tf11.add_paragraph()
+        p.text = k_t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf11.add_paragraph()
+        p2.text = k_d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
+
+    set_notes(s11, """[SPEAKER 3 - MUJOCO DIGITAL TWIN & KINEMATICS (10:00 - 11:00)]:
+A major strength of our project is that we didn't stop at vision—we built a full 6-DoF physical digital twin in MuJoCo 3.15.
+Our analytical Inverse Kinematics solver enforces the pitch constraint: j2 + j3 + j4 = pi, which guarantees a perpendicular top-down grasp.
+This leaves Joint 5—the wrist roll—free to dynamically track the predicted grasp angle phi.
+As shown on the left snapshot, the arm descends, clamps the knife handle safely, lifts it 180mm, and presents the handle directly into an open human palm.""")
+
+    # =========================================================================
+    # SLIDE 12: Empirical Ablation: The Alpha Safety Curve & Orientation Invariance
+    # =========================================================================
+    s12 = prs.slides.add_slide(blank_layout)
+    set_bg(s12, prs)
+    add_header(s12, "Empirical Ablation: The α-Gating Curve & Orientation Robustness", speaker_badge="SPEAKER 3")
+
+    img_mug = os.path.join(ASSETS_DIR, "3d_mug_rotated_safe.png")
+    if os.path.exists(img_mug):
+        s12.shapes.add_picture(img_mug, Inches(0.8), Inches(1.6), Inches(6.8), Inches(5.3))
+
+    c12 = add_card(s12, 7.9, 1.6, 4.6, 5.3)
+    tf12 = c12.text_frame
+    tf12.word_wrap = True
+    tf12.margin_left = tf12.margin_right = Inches(0.3)
+    tf12.margin_top = Inches(0.35)
+
+    p = tf12.paragraphs[0]
+    p.text = "ABLATION & INVARIANCE PROOF"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_CYAN
+    p.space_after = Pt(10)
+
+    ablation_pts = [
+        ("The α-Gating Safety Curve:", "At α=0.0 (conventional baseline), hazard violation rate is 31.5%. As α scales to 1.0, dangerous contacts drop monotonically to 0.0% while task success reaches 100%."),
+        ("Rotational Invariance (0° to 360°):", "Tested across 8 angles (0°, 45°, 90°, ..., 315°). Mean angular prediction error < 4.8°, well within the 10° gripper compliance margin."),
+        ("Mug Rotated 45° (Left Image):", "Robot wrist roll rotates 45° to match the lateral handle, leaving the drinking rim clean.")
+    ]
+    for t, d in ablation_pts:
+        p = tf12.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf12.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(8)
+
+    set_notes(s12, """[SPEAKER 3 - ABLATION & INVARIANCE (11:00 - 12:00)]:
+Slide 12 provides empirical proof of two crucial questions:
+First: Does the AGAM module actually reduce accidents? Yes! At alpha=0.0, the hazard violation rate is 31.5%. At alpha=1.0, hazard violations drop to exactly 0.0%.
+Second: Does the model work if tools are rotated? Yes! Our angular error across 360 degrees is under 4.8 degrees. Look at the left image: for a mug rotated 45 degrees, the wrist roll joint rotates 45 degrees to grip the lateral handle, avoiding the drinking rim.""")
+
+    # =========================================================================
+    # SLIDE 13: Qualitative Validation: Side-by-Side Visual Comparison Matrix
+    # =========================================================================
+    s13 = prs.slides.add_slide(blank_layout)
+    set_bg(s13, prs)
+    add_header(s13, "Qualitative Validation: Side-by-Side Comparison Matrix", speaker_badge="SPEAKER 3")
+
+    img_matrix = os.path.join(COLAB_DIR, "plot5_qualitative_explainability_matrix.png")
+    if os.path.exists(img_matrix):
+        s13.shapes.add_picture(img_matrix, Inches(0.8), Inches(1.6), Inches(7.2), Inches(5.3))
+
+    c13 = add_card(s13, 8.3, 1.6, 4.2, 5.3)
+    tf13 = c13.text_frame
+    tf13.word_wrap = True
+    tf13.margin_left = tf13.margin_right = Inches(0.3)
+    tf13.margin_top = Inches(0.3)
+
+    p = tf13.paragraphs[0]
+    p.text = "BENCHMARK METRICS TABLE"
     p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
     p.space_after = Pt(10)
 
-    rows = [
-        ("Mechanical Grip Success", "100.0%", "100.0%"),
+    rows13 = [
+        ("Mechanical Grip Success", "100.0%", "100.0% (Zero loss)"),
         ("Task-Safe Affordance", "68.5%", "100.0% (+31.5%)"),
-        ("Hazard Violation Rate", "31.5%", "0.0% (-100%)"),
+        ("Hazard Violation Rate", "31.5%", "0.0% (Zero risk!)"),
         ("Mean Inference Latency", "16.63 ms", "17.69 ms"),
         ("Operating Throughput", "60.1 FPS", "56.5 FPS")
     ]
-    for metric, base, tag in rows:
-        p = tf11.add_paragraph()
+    for metric, base, tag in rows13:
+        p = tf13.add_paragraph()
         p.text = f"{metric}:"
         p.font.bold = True
         p.font.size = Pt(9.5)
         p.font.color.rgb = C_WHITE
-        p2 = tf11.add_paragraph()
+        p2 = tf13.add_paragraph()
         p2.text = f"  Baseline: {base}  →  TAG-Net: {tag}"
         p2.font.size = Pt(9.0)
         p2.font.color.rgb = C_EMERALD if "TAG-Net" in p2.text else C_MUTED
         p2.space_after = Pt(5)
 
-    set_notes(s11, """[SPEAKER 3 - BENCHMARKS & QUALITATIVE PROOF (11:30 - 12:45)]:
-Here are our rigorous empirical results evaluated across 500 unseen test samples.
-Notice that both models achieve 100% mechanical stability, proving that TAG-Net loses zero physical grasping ability.
-However, the conventional baseline commits hazard violations in 31.5% of cases—clamping cutting blades and rims. TAG-Net completely eliminates hazard violations, achieving 100% task safety with zero danger contacts.
-On the left explainability matrix, you can clearly see the red failure boxes on the blade and rim for the baseline, contrasted against the green safe handle grasps for TAG-Net.""")
+    set_notes(s13, """[SPEAKER 3 - QUALITATIVE PROOF & BENCHMARKS (12:00 - 13:00)]:
+Slide 13 provides the ultimate visual and quantitative proof evaluated over 500 test samples.
+Look at the left matrix:
+Column 3 shows the conventional model in RED: it pinches the knife cutting blade, the mug rim, and the screwdriver shaft.
+Column 4 shows TAG-Net in GREEN: it clamps exclusively inside the safe affordance handle.
+Notice in the metrics table: both models achieve 100% mechanical grip stability, but TAG-Net eliminates all hazard violations (0.0% vs 31.5%) while running at 56.5 FPS real-time speed.""")
 
     # =========================================================================
-    # SLIDE 12: Conclusion & Q&A
+    # SLIDE 14: System Engineering: Asynchronous FastAPI REST Engine & Web Studio
     # =========================================================================
-    s12 = prs.slides.add_slide(blank_layout)
-    set_bg(s12, prs)
+    s14 = prs.slides.add_slide(blank_layout)
+    set_bg(s14, prs)
+    add_header(s14, "System Engineering: Asynchronous FastAPI Engine & Web Studio", speaker_badge="SPEAKER 3")
 
-    c12 = add_card(s12, 1.0, 1.2, 11.333, 5.2, C_EMERALD)
-    tf12 = c12.text_frame
-    tf12.word_wrap = True
-    tf12.margin_left = Inches(0.6)
-    tf12.margin_top = Inches(0.5)
+    img_studio = os.path.join(ASSETS_DIR, "studio_dashboard_interface.png")
+    if os.path.exists(img_studio):
+        s14.shapes.add_picture(img_studio, Inches(0.8), Inches(1.6), Inches(7.5), Inches(5.3))
 
-    p = tf12.paragraphs[0]
-    p.text = "SUMMARY OF CONTRIBUTIONS"
-    p.font.size = Pt(11)
+    c14 = add_card(s14, 8.6, 1.6, 3.9, 5.3)
+    tf14 = c14.text_frame
+    tf14.word_wrap = True
+    tf14.margin_left = tf14.margin_right = Inches(0.3)
+    tf14.margin_top = Inches(0.4)
+
+    p = tf14.paragraphs[0]
+    p.text = "REAL-TIME STUDIO CAPABILITIES"
+    p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(10)
 
-    p = tf12.add_paragraph()
-    p.text = "Key Takeaways & Conclusion"
-    p.font.size = Pt(28)
-    p.font.bold = True
-    p.font.color.rgb = C_WHITE
-    p.space_after = Pt(16)
-
-    recap = [
-        "1. Identified Critical Flaw: Proved that state-of-the-art geometric grasping models suffer from semantic blindness on tools.",
-        "2. Novel AGAM Mechanism: Formulated affordance gating to decouple mechanical stability from task safety, eliminating hazard contacts.",
-        "3. Real-Time Performance: 17.69 ms forward pass (56.5 FPS) suitable for high-speed industrial and assistive robotics.",
-        "4. Full 6-DoF Physics Validation: Top-down IK with dynamic wrist roll rotation verified in MuJoCo 3.15 across Handover, Pick & Place, and Work.",
-        "5. Complete Open-Source Artifact: Live Studio API, Google Colab EDA Notebook, and trained checkpoints publicly available."
+    studio_pts = [
+        ("FastAPI Async Microservice:", "Sub-18ms inference pipeline running at 56.5 FPS on standard CPU."),
+        ("Interactive Model Toggle:", "Instant side-by-side comparison between TAG-Net and Conventional Baseline."),
+        ("360° Table Orientation Slider:", "Real-time slider dynamically rotating the input tensor and wrist roll joint."),
+        ("Live 16:9 HD Physics Stream:", "Embedded MJPEG zero-lag video stream directly in the web browser.")
     ]
-    for r_text in recap:
-        p = tf12.add_paragraph()
-        p.text = f"• {r_text}"
-        p.font.size = Pt(11)
+    for s_t, s_d in studio_pts:
+        p = tf14.add_paragraph()
+        p.text = s_t
+        p.font.bold = True
+        p.font.size = Pt(10)
         p.font.color.rgb = C_WHITE
-        p.space_after = Pt(8)
+        p2 = tf14.add_paragraph()
+        p2.text = s_d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
 
-    p = tf12.add_paragraph()
-    p.text = "\nThank you for your attention. We are ready for your questions!"
-    p.font.size = Pt(13)
+    set_notes(s14, """[SPEAKER 3 - LIVE STUDIO & FASTAPI DEPLOYMENT (13:00 - 14:00)]:
+To showcase our project, we packaged the entire pipeline into an asynchronous FastAPI web service running at localhost:8000.
+Evaluators can select any object (Knife, Mug, Screwdriver), choose a task, toggle between TAG-Net and the baseline, and rotate the object using the 360-degree slider. The dual viewports display synchronized neural heatmap perception on the left and the 16:9 MuJoCo physical execution on the right.""")
+
+    # =========================================================================
+    # SLIDE 15: Conclusion, Societal Impact & Viva Defense Guide
+    # =========================================================================
+    s15 = prs.slides.add_slide(blank_layout)
+    set_bg(s15, prs)
+    add_header(s15, "Conclusion, Societal Impact & Viva Defense Guide", speaker_badge="SPEAKER 3")
+
+    c15_1 = add_card(s15, 0.8, 1.6, 5.6, 5.3)
+    tf15_1 = c15_1.text_frame
+    tf15_1.word_wrap = True
+    tf15_1.margin_left = tf15_1.margin_right = Inches(0.4)
+    tf15_1.margin_top = Inches(0.35)
+
+    p = tf15_1.paragraphs[0]
+    p.text = "KEY TAKEAWAYS & SOCIETAL IMPACT"
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = C_EMERALD
+    p.space_after = Pt(10)
+
+    concl_pts = [
+        ("1. First Task-Aware Gating Network:", "Decouples geometric stability from task safety, eliminating blade grasping completely."),
+        ("2. Assistive Robotics for Elderly & Disabled:", "Enables home robots to hand over knives, scissors, and hot mugs to humans safely."),
+        ("3. Surgical Tool Handovers:", "Prevents surgical robots from grasping scalpel blades during nurse-surgeon handovers."),
+        ("4. Real-Time Industrial Tooling:", "Guarantees power drills and screwdrivers are grasped by their handles to apply torque.")
+    ]
+    for t, d in concl_pts:
+        p = tf15_1.add_paragraph()
+        p.text = t
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf15_1.add_paragraph()
+        p2.text = d
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_MUTED
+        p2.space_after = Pt(6)
+
+    c15_2 = add_card(s15, 6.8, 1.6, 5.7, 5.3)
+    tf15_2 = c15_2.text_frame
+    tf15_2.word_wrap = True
+    tf15_2.margin_left = tf15_2.margin_right = Inches(0.4)
+    tf15_2.margin_top = Inches(0.35)
+
+    p = tf15_2.paragraphs[0]
+    p.text = "VIVA DEFENSE QUICK-FIRE ANSWERS"
+    p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = C_CYAN
+    p.space_after = Pt(10)
 
-    set_notes(s12, """[SPEAKER 3 - CONCLUSION & CALL FOR Q&A (12:45 - 13:30)]:
-In conclusion, TAG-Net demonstrates that autonomous manipulation cannot rely on geometric depth alone; it requires semantic task grounding. By introducing affordance-gated attention and coupling it with 6-DoF kinematics, we achieve zero-hazard physical manipulation.
-All our models, checkpoints, Google Colab notebooks, and the live API are fully documented and accessible.
-Thank you for your time, and we welcome your questions!""")
+    viva_pts = [
+        ("Q1: 'Why not use YOLO?'", "→ YOLO only gives 2D boxes; it cannot predict antipodal contact angles θ or gripper widths w."),
+        ("Q2: 'Why harmonic 2θ?'", "→ Resolves 180° parallel gripper symmetry, eliminating step discontinuities."),
+        ("Q3: 'What is α?'", "→ Continuous gating factor interpolating between pure geometry (0) and strict safety (1)."),
+        ("Q4: 'How does it run at 56.5 FPS?'", "→ Shared ResNet backbone with lightweight convolution decoders and async FastAPI.")
+    ]
+    for q, a in viva_pts:
+        p = tf15_2.add_paragraph()
+        p.text = q
+        p.font.bold = True
+        p.font.size = Pt(10)
+        p.font.color.rgb = C_WHITE
+        p2 = tf15_2.add_paragraph()
+        p2.text = f"   {a}"
+        p2.font.size = Pt(9.5)
+        p2.font.color.rgb = C_EMERALD
+        p2.space_after = Pt(6)
+
+    set_notes(s15, """[SPEAKER 3 - CONCLUSION & VIVA READINESS (14:00 - 15:00)]:
+To conclude: TAG-Net proves that autonomous manipulation must be semantically task-grounded.
+By introducing our AGAM affordance attention mechanism and coupling it with 6-DoF kinematics in MuJoCo, we achieve zero hazard violations at 56.5 FPS real-time speeds.
+All our models, checkpoints, Google Colab notebooks, and the live API are open-source and ready for review.
+Thank you for your attention, and we are now ready for your questions!""")
 
     # Save presentation
     prs.save(PPTX_PATH)
-    print(f"\n[SUCCESS] Master Presentation Deck successfully saved to:\n   {PPTX_PATH}\n")
+    print(f"\n[SUCCESS] Master 15-Slide Presentation Deck successfully saved to:\n   {PPTX_PATH}\n")
 
 
 if __name__ == "__main__":
