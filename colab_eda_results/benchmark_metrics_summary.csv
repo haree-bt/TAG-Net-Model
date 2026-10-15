@@ -1,0 +1,3 @@
+Model Architecture,Mechanical Success (%),Task-Safe Affordance (%),Hazard Violation Rate (%),Mean Latency (ms),Throughput (FPS)
+Conventional Baseline (Geometry-Only),100.0%,68.5%,31.5%,16.63 ms,60.1 FPS
+Proposed TAG-Net (Affordance-Gated Attention),100.0%,100.0%,0.0%,17.69 ms,56.5 FPS
