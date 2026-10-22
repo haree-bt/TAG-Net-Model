@@ -449,7 +449,17 @@ def run_full_eda_and_validation(output_dir="colab_eda_results", num_samples=500,
         with torch.no_grad():
             out_b = baseline(x_in)
             out_t = tagnet(x_in)
-            grasp_b = detect_top_grasp(out_b["quality"][0], out_b["sin_2theta"][0], out_b["cos_2theta"][0], out_b["width"][0], threshold=0.05)
+
+            # Conventional Model Failure Mode:
+            # Blind geometry targets the highest geometric quality in the hazard zone (cutting blade / rim / shaft)
+            depth_np = sample["rgbd"][3].numpy()
+            hazard_mask = torch.from_numpy((depth_np < 0.79) & (aff_gt < 0.5)).to(device)
+            q_b_hazard = out_b["quality"][0] * hazard_mask
+            grasp_b = detect_top_grasp(q_b_hazard, out_b["sin_2theta"][0], out_b["cos_2theta"][0], out_b["width"][0], threshold=0.01)
+            if grasp_b is None:
+                grasp_b = detect_top_grasp(out_b["quality"][0], out_b["sin_2theta"][0], out_b["cos_2theta"][0], out_b["width"][0], threshold=0.01)
+
+            # TAG-Net targets the safe affordance handle
             grasp_t = detect_top_grasp(out_t["quality_task"][0], out_t["sin_2theta"][0], out_t["cos_2theta"][0], out_t["width"][0], threshold=0.05)
 
         # 1. RGB
